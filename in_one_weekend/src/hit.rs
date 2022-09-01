@@ -79,9 +79,14 @@ impl Ray {
     }
 }
 
-pub fn ray_color(r: &Ray, world: &dyn Hittable) -> Color {
-    if let Some(hr) = world.hit(r, 0.0, INFINITY) {
-        0.5 * (hr.normal + Vec3(1.0, 1.0, 1.0))
+pub fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Color {
+    if depth <= 0 {
+        return Vec3(0.0, 0.0, 0.0);
+    }
+
+    if let Some(hr) = world.hit(r, 0.001, INFINITY) {
+        let target = hr.p + hr.normal + random_in_unit_sphere();
+        0.5 * ray_color(&Ray{orig: hr.p, dir: target - hr.p}, world, depth-1)
     } else {
         let unit_direction = unit_vector(r.dir);
         let t = 0.5*(unit_direction.1+1.0);

@@ -17,6 +17,8 @@ fn main() {
     let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
     let samples_per_pixel = 100;
 
+    let max_depth = 50;
+
     // World
     let mut world = HittableList{objects: vec![]};
     world.objects.push(Box::new(Sphere{center: Vec3(0.0, 0.0, -1.0), radius: 0.5}));
@@ -34,7 +36,7 @@ fn main() {
                 let u = (i as f64 + rng.gen::<f64>()) / (image_width as f64 - 1.0);
                 let v = (j as f64 + rng.gen::<f64>()) / (image_height as f64 - 1.0);
                 let r = cam.get_ray(u, v);
-                pixel_color = pixel_color + ray_color(&r, &world);
+                pixel_color = pixel_color + ray_color(&r, &world, max_depth);
             }
             write_color(pixel_color, samples_per_pixel);
         }

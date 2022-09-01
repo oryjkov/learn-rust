@@ -1,4 +1,5 @@
 use std::ops;
+use rand::random;
 
 #[derive(Copy, Clone)]
 pub struct Vec3(pub f64, pub f64, pub f64);
@@ -71,9 +72,10 @@ pub fn dot(u: Vec3, v: Vec3) -> f64 {
 pub fn write_color(c: Color, samples_per_pixes: i32) {
     let scale = 1.0 / samples_per_pixes as f64;
 
-    let r = c.0 * scale;
-    let g = c.1 * scale;
-    let b = c.2 * scale;
+    // gamma correction with gamma = 2
+    let r = (c.0 * scale).sqrt();
+    let g = (c.1 * scale).sqrt();
+    let b = (c.2 * scale).sqrt();
 
     println!("{} {} {}",
     (256.0 * r.clamp(0.0, 0.999)) as i32,
@@ -82,3 +84,16 @@ pub fn write_color(c: Color, samples_per_pixes: i32) {
  );
 }
 
+pub fn random_in_unit_sphere() -> Vec3 {
+    loop {
+        let p = Vec3(
+            random::<f64>() * 2.0 - 1.0,
+            random::<f64>() * 2.0 - 1.0,
+            random::<f64>() * 2.0 - 1.0,
+        );
+        if p.length_squared() >= 1.0 {
+            continue;
+        }
+        return p;
+	}
+}

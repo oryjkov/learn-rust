@@ -1,4 +1,5 @@
 use std::{ops, f64::INFINITY};
+use rand::Rng;
 
 #[derive(Copy, Clone)]
 struct Vec3 {
@@ -71,8 +72,18 @@ fn dot(u: Vec3, v: Vec3) -> f64 {
     u.e0*v.e0 + u.e1*v.e1 + u.e2*v.e2
 }
 
-fn write_color(c: Vec3) {
-    println!("{} {} {}", (255.999 * c.e0) as i32, (255.999 * c.e1) as i32, (255.999 * c.e2) as i32,);
+fn write_color(c: Color, samples_per_pixes: i32) {
+    let scale = 1.0 / samples_per_pixes as f64;
+
+    let r = c.e0 * scale;
+    let g = c.e1 * scale;
+    let b = c.e2 * scale;
+
+    println!("{} {} {}",
+    (256.0 * r.clamp(0.0, 0.999)) as i32,
+    (256.0 * g.clamp(0.0, 0.999)) as i32,
+    (256.0 * b.clamp(0.0, 0.999)) as i32,
+ );
 }
 
 struct HitRecord {
@@ -163,34 +174,63 @@ fn ray_color(r: &Ray, world: &dyn Hittable) -> Color {
     }
 }
 
+struct Camera {
+    origin: Point3,
+    lower_left_corner: Point3,
+    horizontal: Vec3,
+    vertical: Vec3,
+}
+impl Camera {
+    fn get_ray(&self, u: f64, v: f64) -> Ray {
+        Ray { orig: self.origin, dir: self.lower_left_corner + u*self.horizontal + v*self.vertical }
+    }
+}
+fn build_camera() -> Camera {
+    let aspect_ratio = 16.0 / 9.0;
+    let viewport_height = 2.0;
+    let viewport_width = aspect_ratio * viewport_height;
+    let focal_length = 1.0;
+
+    let origin = Point3{e0: 0.0, e1: 0.0, e2: 0.0};
+    let horizontal = Vec3 { e0: viewport_width, e1: 0.0, e2: 0.0 };
+    let vertical = Vec3 { e0:0.0, e1: viewport_height, e2: 0.0 };
+
+    Camera{
+        origin,
+        horizontal,
+        vertical,
+        lower_left_corner: origin - horizontal/2.0 - vertical/2.0 - Vec3{e0:0.0, e1:0.0, e2:focal_length },
+    }
+}
+
 fn main() {
-    const ASPECT_RATIO : f64 = 16.0 / 9.0;
-    const IMAGE_WIDTH: i32 = 400;
-    const IMAGE_HEIGHT: i32 = ((IMAGE_WIDTH as f64) / ASPECT_RATIO) as i32;
+    let mut rng = rand::thread_rng();
+
+    let aspect_ratio = 16.0 / 9.0;
+    let image_width : i32 = 400;
+    let image_height: i32 = ((image_width as f64) / aspect_ratio) as i32;
+    let samples_per_pixel = 100;
 
     // World
     let mut world = HittableList{objects: vec![]};
     world.objects.push(Box::new(Sphere{center: Point3{e0: 0.0, e1: 0.0, e2: -1.0}, radius: 0.5}));
     world.objects.push(Box::new(Sphere{center: Point3{e0: 0.0, e1: -100.5, e2: -1.0}, radius: 100.0}));
 
-    let viewport_height = 2.0;
-    let viewport_width = ASPECT_RATIO * viewport_height;
-    let focal_length = 1.0;
+    // Camera
+    let cam = build_camera();
 
-    let origin = Point3{e0: 0.0, e1: 0.0, e2: 0.0,};
-    let horizontal = Vec3{e0: viewport_width, e1: 0.0, e2: 0.0,};
-    let vertical = Vec3{e0: 0.0, e1: viewport_height, e2: 0.0,};
-    let lower_left_corner = origin - horizontal/2.0 - vertical/2.0 - Vec3{e0:0.0, e1:0.0, e2:focal_length};
-
-    print!("P3\n{} {}\n255\n", IMAGE_WIDTH, IMAGE_HEIGHT);
-    for j in (0..IMAGE_HEIGHT).rev() {
+    print!("P3\n{} {}\n255\n", image_width, image_height);
+    for j in (0..image_height).rev() {
         eprintln!("{} scan lines remaining", j);
-        for i in 0..IMAGE_WIDTH {
-            let u = (i as f64) / (IMAGE_WIDTH as f64 - 1.0);
-            let v = (j as f64) / (IMAGE_HEIGHT as f64 - 1.0);
-            let r = Ray{orig: origin, dir: lower_left_corner + u*horizontal + v*vertical - origin};
-            let pixel_color = ray_color(&r, &world);
-            write_color(pixel_color);
+        for i in 0..image_width {
+            let mut pixel_color = Color{e0: 0.0, e1: 0.0, e2: 0.0 };
+            for _ in 0..samples_per_pixel {
+                let u = (i as f64 + rng.gen::<f64>()) / (image_width as f64 - 1.0);
+                let v = (j as f64 + rng.gen::<f64>()) / (image_height as f64 - 1.0);
+                let r = cam.get_ray(u, v);
+                pixel_color = pixel_color + ray_color(&r, &world);
+            }
+            write_color(pixel_color, samples_per_pixel);
         }
     } 
 }

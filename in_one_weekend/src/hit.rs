@@ -1,15 +1,17 @@
 use std::f64::INFINITY;
 
 use crate::vec3::*;
+use crate::metal::*;
 
-pub struct HitRecord {
-    p: Point3,
-    normal: Vec3,
-    t: f64,
-    front_face: bool,
+pub struct HitRecord<'a> {
+    pub p: Point3,
+    pub normal: Vec3,
+    pub material: &'a dyn Material,
+    pub t: f64,
+    pub front_face: bool,
 }
 
-impl HitRecord {
+impl HitRecord<'_> {
     fn set_face_normal(&mut self, r: &Ray, outward_normal: Vec3) {
         self.front_face = dot(r.dir, outward_normal) < 0.0;
         self.normal = if self.front_face { outward_normal } else { outward_normal * (-1.0) }
@@ -19,12 +21,13 @@ pub trait Hittable {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
 }
 
-pub struct Sphere {
+pub struct Sphere<'a> {
     pub center: Point3,
     pub radius: f64,
+    pub material: &'a dyn Material,
 }
 
-impl Hittable for Sphere {
+impl Hittable for Sphere<'_> {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
         let oc = r.orig - self.center;
         let a = r.dir.length_squared();
@@ -44,7 +47,7 @@ impl Hittable for Sphere {
                 return None;
             }
         }
-        let mut hr = HitRecord { p: r.at(root), normal: (r.at(root) - self.center) / self.radius, t: root, front_face: false, };
+        let mut hr = HitRecord { p: r.at(root), normal: (r.at(root) - self.center) / self.radius, t: root, front_face: false, material: self.material};
         let outward_normal = (hr.p - self.center) / self.radius;
         hr.set_face_normal(r, outward_normal);
         return Some(hr);
@@ -85,8 +88,11 @@ pub fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Color {
     }
 
     if let Some(hr) = world.hit(r, 0.001, INFINITY) {
-        let target = hr.p + hr.normal + random_in_unit_sphere();
-        0.5 * ray_color(&Ray{orig: hr.p, dir: target - hr.p}, world, depth-1)
+        if let Some((attenuation, scattered)) = hr.material.scatter(r, &hr) {
+            attenuation * ray_color(&scattered, world, depth-1)
+        } else {
+            Vec3(0.0, 0.0, 0.0)
+        }
     } else {
         let unit_direction = unit_vector(r.dir);
         let t = 0.5*(unit_direction.1+1.0);

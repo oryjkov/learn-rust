@@ -31,7 +31,7 @@ fn main() {
     //world.objects.push(Box::new(Sphere{center: Vec3(0.0, -100.5, -1.0), radius: 100.0}));
 
     // Camera
-    let cam = build_camera();
+    let cam = build_camera(Vec3(-2.0, 2.0, 1.0), Vec3(0.0, 0.0, -1.0), Vec3(0.0, 1.0, 0.0), 90.0, aspect_ratio);
 
     print!("P3\n{} {}\n255\n", image_width, image_height);
     for j in (0..image_height).rev() {

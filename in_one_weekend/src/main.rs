@@ -26,12 +26,18 @@ fn main() {
     world.objects.push(Box::new(Sphere{center: Vec3(0.0, 0.0, -1.0), radius: 0.5, material: &Lambertian{albedo: Vec3(0.1, 0.2, 0.5)}}));
     world.objects.push(Box::new(Sphere{center: Vec3(0.0, -100.5, -1.0), radius: 100.0, material: &Lambertian{albedo: Vec3(0.8, 0.8, 0.0)}}));
     world.objects.push(Box::new(Sphere{center: Vec3(-1.0, 0.0, -1.0), radius: 0.5, material: &Dielectric{ir: 1.5}}));
-    world.objects.push(Box::new(Sphere{center: Vec3(-1.0, 0.0, -1.0), radius: -0.4, material: &Dielectric{ir: 1.5}}));
+    world.objects.push(Box::new(Sphere{center: Vec3(-1.0, 0.0, -1.0), radius: -0.45, material: &Dielectric{ir: 1.5}}));
     world.objects.push(Box::new(Sphere{center: Vec3(1.0, 0.0, -1.0), radius: 0.5, material: &Metal{albedo: Vec3(0.8, 0.6, 0.2), fuzz: 0.0}}));
     //world.objects.push(Box::new(Sphere{center: Vec3(0.0, -100.5, -1.0), radius: 100.0}));
 
     // Camera
-    let cam = build_camera(Vec3(-2.0, 2.0, 1.0), Vec3(0.0, 0.0, -1.0), Vec3(0.0, 1.0, 0.0), 90.0, aspect_ratio);
+
+    let look_from = Vec3(3.0, 3.0, 2.0);
+    let look_at = Vec3(0.0, 0.0, -1.0);
+    let v_up = Vec3(0.0, 1.0, 0.0);
+    let dist_to_focus = (look_from-look_at).length();
+    let aperture = 2.0;
+    let cam = build_camera(look_from, look_at, v_up, 20.0, aspect_ratio, aperture, dist_to_focus);
 
     print!("P3\n{} {}\n255\n", image_width, image_height);
     for j in (0..image_height).rev() {

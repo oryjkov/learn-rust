@@ -88,21 +88,6 @@ pub fn cross(u: Vec3, v: Vec3) -> Vec3 {
         u.0*v.1 - u.1*v.0)
 }
 
-pub fn write_color(c: Color, samples_per_pixes: i32) {
-    let scale = 1.0 / samples_per_pixes as f64;
-
-    // gamma correction with gamma = 2
-    let r = (c.0 * scale).sqrt();
-    let g = (c.1 * scale).sqrt();
-    let b = (c.2 * scale).sqrt();
-
-    println!("{} {} {}",
-    (256.0 * r.clamp(0.0, 0.999)) as i32,
-    (256.0 * g.clamp(0.0, 0.999)) as i32,
-    (256.0 * b.clamp(0.0, 0.999)) as i32,
- );
-}
-
 pub fn random_unit_vector() -> Vec3 {
     unit_vector(random_in_unit_sphere())
 }
@@ -133,4 +118,13 @@ pub fn random_in_unit_disk() -> Vec3 {
 
 pub fn reflect(v: Vec3, n: Vec3) -> Vec3 {
     v - 2.0 * dot(v, n) * n
+}
+
+pub fn random_vec3() -> Vec3 {
+    Vec3(random::<f64>(),random::<f64>(),random::<f64>(),)
+}
+
+pub fn random_vec3_bounds(min: f64, max: f64) -> Vec3 {
+    let d = max - min;
+    Vec3(random::<f64>()*d + min,random::<f64>()*d+min,random::<f64>()*d+min,)
 }

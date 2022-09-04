@@ -23,10 +23,11 @@ fn main() {
 
     // World
     let mut world = HittableList{objects: vec![]};
-    world.objects.push(Box::new(Sphere{center: Vec3(0.0, 0.0, -1.0), radius: 0.5, material: &Lambertian{albedo: Vec3(0.7, 0.3, 0.3)}}));
+    world.objects.push(Box::new(Sphere{center: Vec3(0.0, 0.0, -1.0), radius: 0.5, material: &Lambertian{albedo: Vec3(0.1, 0.2, 0.5)}}));
     world.objects.push(Box::new(Sphere{center: Vec3(0.0, -100.5, -1.0), radius: 100.0, material: &Lambertian{albedo: Vec3(0.8, 0.8, 0.0)}}));
-    world.objects.push(Box::new(Sphere{center: Vec3(-1.0, 0.0, -1.0), radius: 0.5, material: &Metal{albedo: Vec3(0.8, 0.8, 0.8), fuzz: 0.3}}));
-    world.objects.push(Box::new(Sphere{center: Vec3(1.0, 0.0, -1.0), radius: 0.5, material: &Metal{albedo: Vec3(0.8, 0.6, 0.2), fuzz: 1.0}}));
+    world.objects.push(Box::new(Sphere{center: Vec3(-1.0, 0.0, -1.0), radius: 0.5, material: &Dielectric{ir: 1.5}}));
+    world.objects.push(Box::new(Sphere{center: Vec3(-1.0, 0.0, -1.0), radius: -0.4, material: &Dielectric{ir: 1.5}}));
+    world.objects.push(Box::new(Sphere{center: Vec3(1.0, 0.0, -1.0), radius: 0.5, material: &Metal{albedo: Vec3(0.8, 0.6, 0.2), fuzz: 0.0}}));
     //world.objects.push(Box::new(Sphere{center: Vec3(0.0, -100.5, -1.0), radius: 100.0}));
 
     // Camera

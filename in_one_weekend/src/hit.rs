@@ -6,7 +6,7 @@ use crate::metal::*;
 pub struct HitRecord<'a> {
     pub p: Point3,
     pub normal: Vec3,
-    pub material: &'a Box<dyn Material+Sync+Send>,
+    pub material: &'a Box<dyn Material>,
     pub t: f64,
     pub front_face: bool,
 }
@@ -17,14 +17,14 @@ impl HitRecord<'_> {
         self.normal = if self.front_face { outward_normal } else { outward_normal * (-1.0) }
     }
 }
-pub trait Hittable: Sync + Send {
+pub trait Hittable: Sync {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
 }
 
 pub struct Sphere {
     pub center: Point3,
     pub radius: f64,
-    pub material: Box<dyn Material+Sync+Send>,
+    pub material: Box<dyn Material>,
 }
 
 impl Hittable for Sphere {

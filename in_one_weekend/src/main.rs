@@ -113,8 +113,7 @@ fn main() {
     let aperture = 0.1;
     let cam = build_camera(look_from, look_at, v_up, 20.0, ASPECT_RATIO, aperture, dist_to_focus);
 
-    let v: Vec<usize> = (0..SAMPLES_PER_PIXEL).collect();
-    if let Some(screen) = v.par_iter()
+    if let Some(screen) = (0..SAMPLES_PER_PIXEL).collect::<Vec<usize>>().par_iter()
         .map(|n| {
             eprintln!("iteration {} started", n);
             render(&wp, &cam, 1)

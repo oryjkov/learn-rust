@@ -51,10 +51,10 @@ fn random_scene() -> HittableList {
 }
 
 const ASPECT_RATIO: f64 = 3.0 / 2.0;
-const IMAGE_WIDTH : usize = 1200;
+const IMAGE_WIDTH : usize = 120;
 const IMAGE_HEIGHT: usize = ((IMAGE_WIDTH as f64) / ASPECT_RATIO) as usize;
 const MAX_DEPTH: i32 = 50;
-const SAMPLES_PER_PIXEL: usize = 500;
+const SAMPLES_PER_PIXEL: usize = 50;
 
 #[derive(Copy, Clone)]
 struct IColor(u8, u8, u8);

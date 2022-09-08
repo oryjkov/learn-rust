@@ -1,5 +1,7 @@
 use std::cmp::Ordering;
 
+use rand::random;
+
 use crate::aabb::*;
 use crate::vec3::*;
 use crate::hit::*;
@@ -39,7 +41,7 @@ impl Hittable for BVHNode {
 
 impl BVHNode {
 	pub fn new(mut objs: Vec<Box<dyn Hittable>>) -> BVHNode {
-		let axis = 1_usize;
+		let axis = random::<usize>() % 3;
 		let comparator = |h1: &Box<dyn Hittable>, h2: &Box<dyn Hittable>| {
 			if let (Some(b1), Some(b2)) = (h1.bounding_box(), h2.bounding_box()) {
 				AABB::compare_axis(&b1, &b2, axis)

@@ -1,7 +1,7 @@
 use std::ops;
 use rand::random;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Vec3(pub f64, pub f64, pub f64);
 pub type Color = Vec3;
 pub type Point3 = Vec3;

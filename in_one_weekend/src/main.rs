@@ -6,11 +6,14 @@ pub mod vec3;
 pub mod camera;
 pub mod hit;
 pub mod metal;
+pub mod aabb;
+pub mod ray;
 
 use vec3::*;
 use camera::*;
 use hit::*;
 use crate::metal::*;
+use crate::ray::*;
 
 fn random_scene() -> HittableList {
     let mut world = HittableList{objects: vec![]};

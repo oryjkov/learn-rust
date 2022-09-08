@@ -1,7 +1,7 @@
 use std::f64::consts::PI;
 
 use crate::vec3::*;
-use crate::hit::*;
+use crate::ray::*;
 
 pub struct Camera {
     origin: Point3,

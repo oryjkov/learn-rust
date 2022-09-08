@@ -1,5 +1,6 @@
 use crate::vec3::*;
 use crate::hit::*;
+use crate::ray::*;
 use rand::random;
 
 pub trait Material: Sync {

@@ -1,7 +1,7 @@
-use std::f64::INFINITY;
-
 use crate::vec3::*;
 use crate::metal::*;
+use crate::aabb::*;
+use crate::ray::*;
 
 pub struct HitRecord<'a> {
     pub p: Point3,
@@ -19,6 +19,7 @@ impl HitRecord<'_> {
 }
 pub trait Hittable: Sync {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
+    fn bounding_box(&self) -> Option<AABB>;
 }
 
 pub struct Sphere {
@@ -52,6 +53,9 @@ impl Hittable for Sphere {
         hr.set_face_normal(r, outward_normal);
         return Some(hr);
     }
+    fn bounding_box(&self) -> Option<AABB> {
+        Some(AABB::new(self.center + (-self.radius), self.center+self.radius))
+    }
 }
 
 pub struct HittableList {
@@ -70,32 +74,22 @@ impl Hittable for HittableList {
         }
         temp_rec
     }
-}
-
-pub struct Ray {
-    pub orig: Point3,
-    pub dir: Vec3,
-}
-impl Ray {
-    pub fn at(&self, t: f64) -> Point3 {
-        self.orig + t * self.dir
-    }
-}
-
-pub fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Color {
-    if depth <= 0 {
-        return Vec3(0.0, 0.0, 0.0);
-    }
-
-    if let Some(hr) = world.hit(r, 0.001, INFINITY) {
-        if let Some((attenuation, scattered)) = hr.material.scatter(r, &hr) {
-            attenuation * ray_color(&scattered, world, depth-1)
+    fn bounding_box(&self) -> Option<AABB> {
+        if self.objects.len() <= 0 { return None }
+        let mut bb;
+        if let Some(x) = self.objects[0].bounding_box() {
+            bb = x;
         } else {
-            Vec3(0.0, 0.0, 0.0)
+            return None;
         }
-    } else {
-        let unit_direction = unit_vector(r.dir);
-        let t = 0.5*(unit_direction.1+1.0);
-        (1.0-t)*Vec3(1.0, 1.0, 1.0) + t*Vec3(0.5, 0.7, 1.0)
+        for obj in &self.objects[1..] {
+            if let Some(b2) = obj.bounding_box() {
+                bb = bb.surrounding_box(&b2);
+            } else {
+                return None
+            }
+        }
+        Some(bb)
     }
 }
+

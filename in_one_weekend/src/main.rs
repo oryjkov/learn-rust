@@ -3,6 +3,7 @@ use rand::random;
 use rayon::prelude::*;
 
 pub mod vec3;
+pub mod bvh_node;
 pub mod camera;
 pub mod hit;
 pub mod metal;
@@ -14,10 +15,11 @@ use camera::*;
 use hit::*;
 use crate::metal::*;
 use crate::ray::*;
+use crate::bvh_node::*;
 
 fn random_scene() -> HittableList {
-    let mut world = HittableList{objects: vec![]};
-    world.objects.push(Box::new(Sphere{center: Vec3(0.0, -1000.0, 0.0), radius: 1000.0, material: Box::new(Lambertian{albedo: Vec3(0.5, 0.5, 0.5)})}));
+    let mut objects: Vec<Box<dyn Hittable>> = vec![];
+    objects.push(Box::new(Sphere{center: Vec3(0.0, -1000.0, 0.0), radius: 1000.0, material: Box::new(Lambertian{albedo: Vec3(0.5, 0.5, 0.5)})}));
 
     for a in -11..11 {
         for b in -11..11 {
@@ -28,17 +30,17 @@ fn random_scene() -> HittableList {
                     x if x<0.8 => {
                         let albedo = random_vec3()*random_vec3();
                         let material = Box::new(Lambertian{albedo});
-                        world.objects.push(Box::new(Sphere{center, radius: 0.2, material}));
+                        objects.push(Box::new(Sphere{center, radius: 0.2, material}));
                     }
                     x if x < 0.95 => {
                         let albedo = random_vec3_bounds(0.5, 1.0);
                         let fuzz = random::<f64>()*0.5;
                         let material = Box::new(Metal{albedo, fuzz});
-                        world.objects.push(Box::new(Sphere{center, radius: 0.2, material}));
+                        objects.push(Box::new(Sphere{center, radius: 0.2, material}));
                     }
                     x if x>=0.95 => {
                         let material = Box::new(Dielectric{ir: 1.5});
-                        world.objects.push(Box::new(Sphere{center, radius: 0.2, material}));
+                        objects.push(Box::new(Sphere{center, radius: 0.2, material}));
 
                     }
                     _ => {}
@@ -46,18 +48,23 @@ fn random_scene() -> HittableList {
             }
         }
     }
-    world.objects.push(Box::new(Sphere{center: Vec3(0.0, 1.0, 0.0), radius: 1.0, material: Box::new(Dielectric{ir: 1.5})}));
+    objects.push(Box::new(Sphere{center: Vec3(0.0, 1.0, 0.0), radius: 1.0, material: Box::new(Dielectric{ir: 1.5})}));
 
-    world.objects.push(Box::new(Sphere{center: Vec3(-4.0, -1.0, 0.0), radius: 1.0, material: Box::new(Lambertian{albedo: Vec3(0.4, 0.2, 0.1)})}));
-    world.objects.push(Box::new(Sphere{center: Vec3(4.0, 1.0, 0.0), radius: 1.0, material: Box::new(Metal{albedo: Vec3(0.7, 0.6, 0.5), fuzz: 0.0})}));
+    objects.push(Box::new(Sphere{center: Vec3(-4.0, -1.0, 0.0), radius: 1.0, material: Box::new(Lambertian{albedo: Vec3(0.4, 0.2, 0.1)})}));
+    objects.push(Box::new(Sphere{center: Vec3(4.0, 1.0, 0.0), radius: 1.0, material: Box::new(Metal{albedo: Vec3(0.7, 0.6, 0.5), fuzz: 0.0})}));
+
+    // Using BVH reduces the time to render (1200 width, 50 samples/pixel) from 602s to 155s.
+    let bvh = BVHNode::new(objects);
+    let mut world = HittableList{objects: vec![]};
+    world.objects.push(Box::new(bvh));
     world
 }
 
 const ASPECT_RATIO: f64 = 3.0 / 2.0;
-const IMAGE_WIDTH : usize = 120;
+const IMAGE_WIDTH : usize = 1200;
 const IMAGE_HEIGHT: usize = ((IMAGE_WIDTH as f64) / ASPECT_RATIO) as usize;
 const MAX_DEPTH: i32 = 50;
-const SAMPLES_PER_PIXEL: usize = 50;
+const SAMPLES_PER_PIXEL: usize = 500;
 
 #[derive(Copy, Clone)]
 struct IColor(u8, u8, u8);

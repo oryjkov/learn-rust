@@ -21,13 +21,35 @@ use crate::bvh_node::*;
 use crate::sphere::*;
 use crate::texture::*;
 
+fn two_spheres() -> HittableList {
+    let mut objects: Vec<Box<dyn Hittable>> = vec![];
+
+    let checker = Box::new(CheckerTexture{
+        odd: Box::new(SolidColor{color: Vec3(0.2,0.3,0.1)}),
+        even: Box::new(SolidColor{color: Vec3(0.9,0.9,0.9)}),
+    });
+    objects.push(Sphere::box_new(Vec3(0.0, -10.0, 0.0), 10.0, Lambertian{albedo: checker}));
+
+    let checker = Box::new(CheckerTexture{
+        odd: Box::new(SolidColor{color: Vec3(0.2,0.3,0.1)}),
+        even: Box::new(SolidColor{color: Vec3(0.9,0.9,0.9)}),
+    });
+    objects.push(Sphere::box_new(Vec3(0.0, 10.0, 0.0), 10.0, Lambertian{albedo: checker}));
+
+    // Using BVH reduces the time to render (1200 width, 50 samples/pixel) from 602s to 155s.
+    let bvh = BVHNode::new(objects);
+    let mut world = HittableList{objects: vec![]};
+    world.objects.push(Box::new(bvh));
+    world
+}
+
 fn random_scene() -> HittableList {
     let mut objects: Vec<Box<dyn Hittable>> = vec![];
     let checker = Box::new(CheckerTexture{
         odd: Box::new(SolidColor{color: Vec3(0.2,0.3,0.1)}),
         even: Box::new(SolidColor{color: Vec3(0.9,0.9,0.9)}),
     });
-    objects.push(Box::new(Sphere{center: Vec3(0.0, -1000.0, 0.0), radius: 1000.0, material: Box::new(Lambertian{albedo: checker})}));
+    objects.push(Sphere::box_new(Vec3(0.0, -1000.0, 0.0), 1000.0, Lambertian{albedo: checker}));
 
     for a in -11..11 {
         for b in -11..11 {
@@ -37,18 +59,18 @@ fn random_scene() -> HittableList {
                 match choose_mat {
                     x if x<0.8 => {
                         let color = random_vec3()*random_vec3();
-                        let material = Box::new(Lambertian{albedo: Box::new(SolidColor{color})});
-                        objects.push(Box::new(Sphere{center, radius: 0.2, material}));
+                        let material = Lambertian{albedo: Box::new(SolidColor{color})};
+                        objects.push(Sphere::box_new(center, 0.2, material));
                     }
                     x if x < 0.95 => {
                         let albedo = random_vec3_bounds(0.5, 1.0);
                         let fuzz = random::<f64>()*0.5;
-                        let material = Box::new(Metal{albedo, fuzz});
-                        objects.push(Box::new(Sphere{center, radius: 0.2, material}));
+                        let material = Metal{albedo, fuzz};
+                        objects.push(Sphere::box_new(center, 0.2, material));
                     }
                     x if x>=0.95 => {
-                        let material = Box::new(Dielectric{ir: 1.5});
-                        objects.push(Box::new(Sphere{center, radius: 0.2, material}));
+                        let material = Dielectric{ir: 1.5};
+                        objects.push(Sphere::box_new(center, 0.2, material));
 
                     }
                     _ => {}
@@ -56,10 +78,10 @@ fn random_scene() -> HittableList {
             }
         }
     }
-    objects.push(Box::new(Sphere{center: Vec3(0.0, 1.0, 0.0), radius: 1.0, material: Box::new(Dielectric{ir: 1.5})}));
+    objects.push(Sphere::box_new(Vec3(0.0, 1.0, 0.0), 1.0, Dielectric{ir: 1.5}));
 
-    objects.push(Box::new(Sphere{center: Vec3(-4.0, -1.0, 0.0), radius: 1.0, material: Box::new(Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.4, 0.2, 0.1)})})}));
-    objects.push(Box::new(Sphere{center: Vec3(4.0, 1.0, 0.0), radius: 1.0, material: Box::new(Metal{albedo: Vec3(0.7, 0.6, 0.5), fuzz: 0.0})}));
+    objects.push(Sphere::box_new(Vec3(-4.0, -1.0, 0.0), 1.0, Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.4, 0.2, 0.1)})}));
+    objects.push(Sphere::box_new(Vec3(4.0, 1.0, 0.0), 1.0, Metal{albedo: Vec3(0.7, 0.6, 0.5), fuzz: 0.0}));
 
     // Using BVH reduces the time to render (1200 width, 50 samples/pixel) from 602s to 155s.
     let bvh = BVHNode::new(objects);
@@ -121,7 +143,10 @@ fn blend(c1: IColor, c2: IColor) -> IColor {
 
 fn main() {
     // World
-    let wp: Box<dyn Hittable> = Box::new(random_scene());
+    let wp: Box<dyn Hittable> = match 2 {
+        1 => Box::new(random_scene()),
+        _ => Box::new(two_spheres()),
+    };
 
     // Camera
     let look_from = Vec3(13.0, 2.0, 3.0);

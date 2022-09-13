@@ -53,3 +53,9 @@ fn get_shpere_coord(p: Point3) -> (f64, f64) {
 
 	(phi/(2.0*PI), theta/PI)
 }
+
+impl Sphere {
+	pub fn box_new<T: Material+'static>(center: Point3, radius: f64, material: T) -> Box<Sphere> {
+    	Box::new(Sphere{center, radius, material: Box::new(material)})
+	}
+}

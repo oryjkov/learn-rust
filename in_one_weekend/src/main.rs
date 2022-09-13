@@ -11,6 +11,7 @@ pub mod aabb;
 pub mod ray;
 pub mod sphere;
 pub mod texture;
+pub mod perlin;
 
 use vec3::*;
 use camera::*;
@@ -20,6 +21,22 @@ use crate::ray::*;
 use crate::bvh_node::*;
 use crate::sphere::*;
 use crate::texture::*;
+use crate::perlin::*;
+
+fn two_perlin_spheres() -> HittableList {
+    let mut objects: Vec<Box<dyn Hittable>> = vec![];
+
+    let noise = Box::new(NoiseTexture::new(8.0));
+    objects.push(Sphere::box_new(Vec3(0.0, -1000.0, 0.0), 1000.0, Lambertian{albedo: noise}));
+    let noise = Box::new(NoiseTexture::new(4.0));
+    objects.push(Sphere::box_new(Vec3(0.0, 2.0, 0.0), 2.0, Lambertian{albedo: noise}));
+
+    // Using BVH reduces the time to render (1200 width, 50 samples/pixel) from 602s to 155s.
+    let bvh = BVHNode::new(objects);
+    let mut world = HittableList{objects: vec![]};
+    world.objects.push(Box::new(bvh));
+    world
+}
 
 fn two_spheres() -> HittableList {
     let mut objects: Vec<Box<dyn Hittable>> = vec![];
@@ -143,9 +160,10 @@ fn blend(c1: IColor, c2: IColor) -> IColor {
 
 fn main() {
     // World
-    let wp: Box<dyn Hittable> = match 2 {
+    let wp: Box<dyn Hittable> = match 3 {
         1 => Box::new(random_scene()),
-        _ => Box::new(two_spheres()),
+        2 => Box::new(two_spheres()),
+        _ => Box::new(two_perlin_spheres()),
     };
 
     // Camera

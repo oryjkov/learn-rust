@@ -1,6 +1,7 @@
 use crate::vec3::*;
 use crate::hit::*;
 use crate::ray::*;
+use crate::texture::*;
 use rand::random;
 
 pub trait Material: Sync {
@@ -8,7 +9,7 @@ pub trait Material: Sync {
 }
 
 pub struct Lambertian {
-	pub albedo: Color,
+	pub albedo: Box<dyn Texture>,
 }
 
 impl Material for Lambertian {
@@ -17,7 +18,7 @@ impl Material for Lambertian {
 		if scatter_direction.near_zero() {
 			scatter_direction = hr.normal
 		}
-		Some((self.albedo, Ray{orig: hr.p, dir: scatter_direction}))
+		Some((self.albedo.value(hr.coord, &hr.p), Ray{orig: hr.p, dir: scatter_direction}))
 	}
 }
 

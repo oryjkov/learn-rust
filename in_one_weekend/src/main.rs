@@ -9,6 +9,8 @@ pub mod hit;
 pub mod metal;
 pub mod aabb;
 pub mod ray;
+pub mod sphere;
+pub mod texture;
 
 use vec3::*;
 use camera::*;
@@ -16,10 +18,16 @@ use hit::*;
 use crate::metal::*;
 use crate::ray::*;
 use crate::bvh_node::*;
+use crate::sphere::*;
+use crate::texture::*;
 
 fn random_scene() -> HittableList {
     let mut objects: Vec<Box<dyn Hittable>> = vec![];
-    objects.push(Box::new(Sphere{center: Vec3(0.0, -1000.0, 0.0), radius: 1000.0, material: Box::new(Lambertian{albedo: Vec3(0.5, 0.5, 0.5)})}));
+    let checker = Box::new(CheckerTexture{
+        odd: Box::new(SolidColor{color: Vec3(0.2,0.3,0.1)}),
+        even: Box::new(SolidColor{color: Vec3(0.9,0.9,0.9)}),
+    });
+    objects.push(Box::new(Sphere{center: Vec3(0.0, -1000.0, 0.0), radius: 1000.0, material: Box::new(Lambertian{albedo: checker})}));
 
     for a in -11..11 {
         for b in -11..11 {
@@ -28,8 +36,8 @@ fn random_scene() -> HittableList {
             if (center-Vec3(4.0, 0.2, 0.0)).length() > 0.9 {
                 match choose_mat {
                     x if x<0.8 => {
-                        let albedo = random_vec3()*random_vec3();
-                        let material = Box::new(Lambertian{albedo});
+                        let color = random_vec3()*random_vec3();
+                        let material = Box::new(Lambertian{albedo: Box::new(SolidColor{color})});
                         objects.push(Box::new(Sphere{center, radius: 0.2, material}));
                     }
                     x if x < 0.95 => {
@@ -50,7 +58,7 @@ fn random_scene() -> HittableList {
     }
     objects.push(Box::new(Sphere{center: Vec3(0.0, 1.0, 0.0), radius: 1.0, material: Box::new(Dielectric{ir: 1.5})}));
 
-    objects.push(Box::new(Sphere{center: Vec3(-4.0, -1.0, 0.0), radius: 1.0, material: Box::new(Lambertian{albedo: Vec3(0.4, 0.2, 0.1)})}));
+    objects.push(Box::new(Sphere{center: Vec3(-4.0, -1.0, 0.0), radius: 1.0, material: Box::new(Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.4, 0.2, 0.1)})})}));
     objects.push(Box::new(Sphere{center: Vec3(4.0, 1.0, 0.0), radius: 1.0, material: Box::new(Metal{albedo: Vec3(0.7, 0.6, 0.5), fuzz: 0.0})}));
 
     // Using BVH reduces the time to render (1200 width, 50 samples/pixel) from 602s to 155s.
@@ -64,7 +72,7 @@ const ASPECT_RATIO: f64 = 3.0 / 2.0;
 const IMAGE_WIDTH : usize = 1200;
 const IMAGE_HEIGHT: usize = ((IMAGE_WIDTH as f64) / ASPECT_RATIO) as usize;
 const MAX_DEPTH: i32 = 50;
-const SAMPLES_PER_PIXEL: usize = 500;
+const SAMPLES_PER_PIXEL: usize = 50;
 
 #[derive(Copy, Clone)]
 struct IColor(u8, u8, u8);

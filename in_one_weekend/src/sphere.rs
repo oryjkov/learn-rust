@@ -46,12 +46,12 @@ impl Hittable for Sphere {
     }
 }
 
-fn get_shpere_coord(p: Point3) -> (f64, f64) {
+fn get_shpere_coord(p: Point3) -> Vec2 {
 	// given a point p on the sphere of radius 1.0, returns the (u,v) coordinates between [0,1].
 	let theta = (-p.1).acos();
 	let phi = (-p.2).atan2(p.0)+PI;
 
-	(phi/(2.0*PI), theta/PI)
+	Vec2(phi/(2.0*PI), theta/PI)
 }
 
 impl Sphere {

@@ -6,6 +6,9 @@ pub struct Vec3(pub f64, pub f64, pub f64);
 pub type Color = Vec3;
 pub type Point3 = Vec3;
 
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct Vec2(pub f64, pub f64);
+
 impl Vec3 {
     pub fn length(self) -> f64 {
         return (self.0 * self.0 + self.1*self.1 + self.2*self.2).sqrt();

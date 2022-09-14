@@ -12,8 +12,9 @@ pub mod ray;
 pub mod sphere;
 pub mod texture;
 pub mod perlin;
+pub mod rectangle;
 
-use vec3::*;
+use crate::vec3::*;
 use camera::*;
 use hit::*;
 use crate::metal::*;
@@ -22,6 +23,27 @@ use crate::bvh_node::*;
 use crate::sphere::*;
 use crate::texture::*;
 use crate::perlin::*;
+use crate::rectangle::*;
+
+fn simple_light() -> HittableList {
+    let mut objects: Vec<Box<dyn Hittable>> = vec![];
+
+    let noise = Box::new(NoiseTexture::new(8.0));
+    objects.push(Sphere::box_new(Vec3(0.0, -1000.0, 0.0), 1000.0, Lambertian{albedo: noise}));
+    let noise = Box::new(NoiseTexture::new(4.0));
+    objects.push(Sphere::box_new(Vec3(0.0, 2.0, 0.0), 2.0, Lambertian{albedo: noise}));
+
+    let difflight = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 4.0*Vec3(1.0, 1.0, 1.0)})});
+    objects.push(Box::new(XYRect{p1: Vec2(3.0, 1.0), p2: Vec2(5.0, 3.0), k: -2.0, material: difflight}));
+    let difflight = DiffuseLight{emit: Box::new(SolidColor{color: Vec3(1.0, 1.0, 1.0)})};
+    objects.push(Sphere::box_new(Vec3(0.0, 7.0, 0.0), 2.0, difflight));
+
+    let bvh = BVHNode::new(objects);
+    let mut world = HittableList{objects: vec![]};
+    world.objects.push(Box::new(bvh));
+    world
+}
+
 
 fn earth() -> HittableList {
     let mut objects: Vec<Box<dyn Hittable>> = vec![];
@@ -29,7 +51,6 @@ fn earth() -> HittableList {
     let earth = ImageTexture::new("earthmap.jpg").expect("failed to load an image");
     objects.push(Sphere::box_new(Vec3(0.0, 0.0, 0.0), 2.0, Lambertian{albedo: Box::new(earth)}));
 
-    // Using BVH reduces the time to render (1200 width, 50 samples/pixel) from 602s to 155s.
     let bvh = BVHNode::new(objects);
     let mut world = HittableList{objects: vec![]};
     world.objects.push(Box::new(bvh));
@@ -44,7 +65,6 @@ fn two_perlin_spheres() -> HittableList {
     let noise = Box::new(NoiseTexture::new(4.0));
     objects.push(Sphere::box_new(Vec3(0.0, 2.0, 0.0), 2.0, Lambertian{albedo: noise}));
 
-    // Using BVH reduces the time to render (1200 width, 50 samples/pixel) from 602s to 155s.
     let bvh = BVHNode::new(objects);
     let mut world = HittableList{objects: vec![]};
     world.objects.push(Box::new(bvh));
@@ -66,7 +86,6 @@ fn two_spheres() -> HittableList {
     });
     objects.push(Sphere::box_new(Vec3(0.0, 10.0, 0.0), 10.0, Lambertian{albedo: checker}));
 
-    // Using BVH reduces the time to render (1200 width, 50 samples/pixel) from 602s to 155s.
     let bvh = BVHNode::new(objects);
     let mut world = HittableList{objects: vec![]};
     world.objects.push(Box::new(bvh));
@@ -145,7 +164,7 @@ fn set_color(screen: &mut Screen, (row, col): (usize, usize), c: Color, samples_
     );
 }
 
-fn render(world: &Box<dyn Hittable>, cam: &Camera, samples_per_pixel: i32) -> Box<Screen> {
+fn render(world: &Box<dyn Hittable>, background: &Color, cam: &Camera, samples_per_pixel: i32) -> Box<Screen> {
     let mut screen = Box::new([IColor(0,0,0); IMAGE_HEIGHT*IMAGE_WIDTH]);
 
     for j in (0..IMAGE_HEIGHT).rev() {
@@ -155,7 +174,7 @@ fn render(world: &Box<dyn Hittable>, cam: &Camera, samples_per_pixel: i32) -> Bo
                 let u = (i as f64 + random::<f64>()) / (IMAGE_WIDTH as f64 - 1.0);
                 let v = (j as f64 + random::<f64>()) / (IMAGE_HEIGHT as f64 - 1.0);
                 let r = cam.get_ray(u, v);
-                pixel_color = pixel_color + ray_color(&r, &**world, MAX_DEPTH);
+                pixel_color = pixel_color + ray_color(&r, background, &**world, MAX_DEPTH);
             }
             set_color(&mut screen, (j, i), pixel_color, samples_per_pixel);
         }
@@ -172,26 +191,37 @@ fn blend(c1: IColor, c2: IColor) -> IColor {
 }
 
 fn main() {
-    // World
-    let wp: Box<dyn Hittable> = match 0 {
-        1 => Box::new(random_scene()),
-        2 => Box::new(two_spheres()),
-        3 => Box::new(two_perlin_spheres()),
-        _ => Box::new(earth()),
-    };
-
     // Camera
-    let look_from = Vec3(13.0, 2.0, 3.0);
-    let look_at = Vec3(0.0, 0.0, 0.0);
-    let v_up = Vec3(0.0, 1.0, 0.0);
-    let dist_to_focus = 10.0;
-    let aperture = 0.1;
+    let mut look_from = Vec3(13.0, 2.0, 3.0);
+    let mut look_at = Vec3(0.0, 0.0, 0.0);
+    let mut v_up = Vec3(0.0, 1.0, 0.0);
+    let mut dist_to_focus = 10.0;
+    let mut aperture = 0.1;
+    let mut background = Vec3(0.7, 0.8, 1.0);
+
+    // World
+    let wp: Box<dyn Hittable> = Box::new(match 0 {
+        1 => random_scene(),
+        2 => two_spheres(),
+        3 => two_perlin_spheres(),
+        4 => earth(),
+        _ => {
+
+            look_from = Vec3(26.0, 3.0, 3.0);
+            look_at = Vec3(0.0, 2.0, 0.0);
+            v_up = Vec3(0.0, 1.0, 0.0);
+            background = Vec3(0.0, 0.0, 0.0);
+            dist_to_focus = 20.0;
+            simple_light()
+        }
+    });
+
     let cam = build_camera(look_from, look_at, v_up, 20.0, ASPECT_RATIO, aperture, dist_to_focus);
 
     if let Some(screen) = (0..SAMPLES_PER_PIXEL).collect::<Vec<usize>>().par_iter()
         .map(|n| {
             eprintln!("iteration {} started", n);
-            render(&wp, &cam, 1)
+            render(&wp, &background, &cam, 1)
         })
         .reduce_with(|mut s1, s2| {
         for j in 0..IMAGE_HEIGHT {

@@ -5,7 +5,7 @@ use crate::vec3::*;
 
 pub trait Texture: Sync {
 	// Returns a color at surface coordinates `coord`. (TODO: what is `p` then?)
-	fn value(&self, coord: (f64, f64), p: &Point3) -> Color;
+	fn value(&self, coord: Vec2, p: &Point3) -> Color;
 }
 
 pub struct SolidColor {
@@ -13,7 +13,7 @@ pub struct SolidColor {
 }
 
 impl Texture for SolidColor {
-	fn value(&self, _coord: (f64, f64), _p: &Point3) -> Color {
+	fn value(&self, _coord: Vec2, _p: &Point3) -> Color {
 		self.color
 	}
 }
@@ -24,7 +24,7 @@ pub struct CheckerTexture {
 }
 
 impl Texture for CheckerTexture {
-	fn value(&self, coord: (f64, f64), p: &Point3) -> Color {
+	fn value(&self, coord: Vec2, p: &Point3) -> Color {
 		let sines = (10.0*p.0).sin() * (10.0*p.1).sin() * (10.0*p.2).sin();
 		if sines < 0.0 {
 			self.odd.value(coord, p)
@@ -46,7 +46,7 @@ impl ImageTexture {
 }
 
 impl Texture for ImageTexture {
-	fn value(&self, coord: (f64, f64), _p: &Point3) -> Color {
+	fn value(&self, coord: Vec2, _p: &Point3) -> Color {
 		let rgb = self.img.get_pixel((coord.0 * (self.img.width() as f64)) as u32 , ((1.0-coord.1) * (self.img.height() as f64)) as u32);
 		Vec3(rgb[0] as f64 / 256.0,
 			 rgb[1] as f64 / 256.0,

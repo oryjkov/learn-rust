@@ -13,20 +13,20 @@ impl Ray {
     }
 }
 
-pub fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Color {
+pub fn ray_color(r: &Ray, background: &Color, world: &dyn Hittable, depth: i32) -> Color {
     if depth <= 0 {
         return Vec3(0.0, 0.0, 0.0);
     }
 
     if let Some(hr) = world.hit(r, 0.001, INFINITY) {
+        let emitted = hr.material.emitted(hr.coord, &hr.p);
+
         if let Some((attenuation, scattered)) = hr.material.scatter(r, &hr) {
-            attenuation * ray_color(&scattered, world, depth-1)
+            emitted + attenuation * ray_color(&scattered, background, world, depth-1)
         } else {
-            Vec3(0.0, 0.0, 0.0)
+            emitted
         }
     } else {
-        let unit_direction = unit_vector(r.dir);
-        let t = 0.5*(unit_direction.1+1.0);
-        (1.0-t)*Vec3(1.0, 1.0, 1.0) + t*Vec3(0.5, 0.7, 1.0)
+        background.clone()
     }
 }

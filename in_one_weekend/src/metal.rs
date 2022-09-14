@@ -6,6 +6,9 @@ use rand::random;
 
 pub trait Material: Sync {
 	fn scatter(&self, r_in: &Ray, hr: &HitRecord) -> Option<(Color, Ray)>;
+	fn emitted(&self, _coord: Vec2, _p: &Point3) -> Color {
+		Vec3(0.0, 0.0, 0.0)
+	}
 }
 
 pub struct Lambertian {
@@ -19,6 +22,19 @@ impl Material for Lambertian {
 			scatter_direction = hr.normal
 		}
 		Some((self.albedo.value(hr.coord, &hr.p), Ray{orig: hr.p, dir: scatter_direction}))
+	}
+}
+
+pub struct DiffuseLight {
+	pub emit: Box<dyn Texture>,
+}
+
+impl Material for DiffuseLight {
+	fn scatter(&self, _r_in: &Ray, _hr: &HitRecord) -> Option<(Color, Ray)> {
+		None
+	}
+	fn emitted(&self, coord: Vec2, p: &Point3) -> Color {
+		self.emit.value(coord, p)
 	}
 }
 

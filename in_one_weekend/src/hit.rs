@@ -4,12 +4,14 @@ use crate::aabb::*;
 use crate::ray::*;
 
 pub struct HitRecord<'a> {
+    // Point where the hit happened.
     pub p: Point3,
+    // Normal vector to the surface at point `p`.
     pub normal: Vec3,
     pub material: &'a Box<dyn Material>,
     pub t: f64,
     pub front_face: bool,
-    pub coord: (f64, f64),
+    pub coord: Vec2,
 }
 
 impl HitRecord<'_> {

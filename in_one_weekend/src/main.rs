@@ -23,6 +23,19 @@ use crate::sphere::*;
 use crate::texture::*;
 use crate::perlin::*;
 
+fn earth() -> HittableList {
+    let mut objects: Vec<Box<dyn Hittable>> = vec![];
+
+    let earth = ImageTexture::new("earthmap.jpg").expect("failed to load an image");
+    objects.push(Sphere::box_new(Vec3(0.0, 0.0, 0.0), 2.0, Lambertian{albedo: Box::new(earth)}));
+
+    // Using BVH reduces the time to render (1200 width, 50 samples/pixel) from 602s to 155s.
+    let bvh = BVHNode::new(objects);
+    let mut world = HittableList{objects: vec![]};
+    world.objects.push(Box::new(bvh));
+    world
+}
+
 fn two_perlin_spheres() -> HittableList {
     let mut objects: Vec<Box<dyn Hittable>> = vec![];
 
@@ -160,10 +173,11 @@ fn blend(c1: IColor, c2: IColor) -> IColor {
 
 fn main() {
     // World
-    let wp: Box<dyn Hittable> = match 3 {
+    let wp: Box<dyn Hittable> = match 0 {
         1 => Box::new(random_scene()),
         2 => Box::new(two_spheres()),
-        _ => Box::new(two_perlin_spheres()),
+        3 => Box::new(two_perlin_spheres()),
+        _ => Box::new(earth()),
     };
 
     // Camera

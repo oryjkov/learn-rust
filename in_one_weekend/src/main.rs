@@ -25,18 +25,54 @@ use crate::texture::*;
 use crate::perlin::*;
 use crate::rectangle::*;
 
+fn cornell_box() -> HittableList {
+    let mut objects: Vec<Box<dyn Hittable>> = vec![];
+
+    let green = Box::new(Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.12, 0.45, 0.15)})});
+    objects.push(Box::new(YZRect{p1: Vec2(0.0, 0.0), p2: Vec2(555.0, 555.0), k: 555.0, material: green}));
+    let red = Box::new(Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.65, 0.05, 0.05)})});
+    objects.push(Box::new(YZRect{p1: Vec2(0.0, 0.0), p2: Vec2(555.0, 555.0), k: 0.0, material: red}));
+    let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: Vec3(15.0, 15.0, 15.0)})});
+    objects.push(Box::new(XZRect{p1: Vec2(213.0, 227.0), p2: Vec2(343.0, 332.0), k: 554.0, material: light}));
+    let white = Box::new(Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.73, 0.73, 0.73)})});
+    objects.push(Box::new(XZRect{p1: Vec2(0.0, 0.0), p2: Vec2(555.0, 555.0), k: 0.0, material: white}));
+    let white = Box::new(Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.73, 0.73, 0.73)})});
+    objects.push(Box::new(XZRect{p1: Vec2(0.0, 0.0), p2: Vec2(555.0, 555.0), k: 555.0, material: white}));
+    let white = Box::new(Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.73, 0.73, 0.73)})});
+    objects.push(Box::new(XYRect{p1: Vec2(0.0, 0.0), p2: Vec2(555.0, 555.0), k: 555.0, material: white}));
+
+    let bvh = BVHNode::new(objects);
+    let mut world = HittableList{objects: vec![]};
+    world.objects.push(Box::new(bvh));
+    world
+}
+
 fn simple_light() -> HittableList {
     let mut objects: Vec<Box<dyn Hittable>> = vec![];
 
     let noise = Box::new(NoiseTexture::new(8.0));
     objects.push(Sphere::box_new(Vec3(0.0, -1000.0, 0.0), 1000.0, Lambertian{albedo: noise}));
-    let noise = Box::new(NoiseTexture::new(4.0));
-    objects.push(Sphere::box_new(Vec3(0.0, 2.0, 0.0), 2.0, Lambertian{albedo: noise}));
+    //let noise = Box::new(NoiseTexture::new(4.0));
+    //objects.push(Sphere::box_new(Vec3(0.0, 2.0, 0.0), 2.0, Lambertian{albedo: noise}));
+    let green = Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.12, 0.85, 0.15)})};
+    objects.push(Sphere::box_new(Vec3(0.0, 2.0, 0.0), 2.0, green));
+
+    let difflight = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 0.2*Vec3(1.0, 1.0, 1.0)})});
+    objects.push(Box::new(XYRect{p1: Vec2(-1.0, 1.0), p2: Vec2(1.0, 3.0), k: -2.0, material: difflight}));
+
+    let difflight = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 1.0*Vec3(1.0, 1.0, 1.0)})});
+    objects.push(Box::new(XYRect{p1: Vec2(-1.0, 1.0), p2: Vec2(1.0, 3.0), k: 2.0, material: difflight}));
+
+    let difflight = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 1.0*Vec3(1.0, 1.0, 1.0)})});
+    objects.push(Box::new(XZRect{p1: Vec2(-1.0, -1.0), p2: Vec2(1.0, 1.0), k: 4.0, material: difflight}));
 
     let difflight = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 4.0*Vec3(1.0, 1.0, 1.0)})});
-    objects.push(Box::new(XYRect{p1: Vec2(3.0, 1.0), p2: Vec2(5.0, 3.0), k: -2.0, material: difflight}));
+    objects.push(Box::new(XZRect{p1: Vec2(-1.0, -1.0), p2: Vec2(1.0, 1.0), k: 0.0, material: difflight}));
+
+    /*
     let difflight = DiffuseLight{emit: Box::new(SolidColor{color: Vec3(1.0, 1.0, 1.0)})};
     objects.push(Sphere::box_new(Vec3(0.0, 7.0, 0.0), 2.0, difflight));
+    */
 
     let bvh = BVHNode::new(objects);
     let mut world = HittableList{objects: vec![]};
@@ -143,7 +179,7 @@ const ASPECT_RATIO: f64 = 3.0 / 2.0;
 const IMAGE_WIDTH : usize = 1200;
 const IMAGE_HEIGHT: usize = ((IMAGE_WIDTH as f64) / ASPECT_RATIO) as usize;
 const MAX_DEPTH: i32 = 50;
-const SAMPLES_PER_PIXEL: usize = 50;
+const SAMPLES_PER_PIXEL: usize = 360;
 
 #[derive(Copy, Clone)]
 struct IColor(u8, u8, u8);
@@ -200,19 +236,33 @@ fn main() {
     let mut background = Vec3(0.7, 0.8, 1.0);
 
     // World
-    let wp: Box<dyn Hittable> = Box::new(match 0 {
+    let wp: Box<dyn Hittable> = Box::new(match 5 {
         1 => random_scene(),
         2 => two_spheres(),
         3 => two_perlin_spheres(),
         4 => earth(),
-        _ => {
-
-            look_from = Vec3(26.0, 3.0, 3.0);
+        5 => {
+            look_from = Vec3(26.0, 3.0, 0.0);
             look_at = Vec3(0.0, 2.0, 0.0);
             v_up = Vec3(0.0, 1.0, 0.0);
             background = Vec3(0.0, 0.0, 0.0);
             dist_to_focus = 20.0;
             simple_light()
+        }
+        _ => {
+            /*            world = cornell_box();
+            aspect_ratio = 1.0;
+            image_width = 600;
+            samples_per_pixel = 200;
+            background = color(0,0,0);
+            lookfrom = point3(278, 278, -800);
+            lookat = point3(278, 278, 0);
+            vfov = 40.0; */
+            look_from = Vec3(278.0, 278.0, -800.0);
+            look_at = Vec3(278.0, 278.0, 0.0);
+            background = Vec3(0.0, 0.0, 0.0);
+            dist_to_focus = 40.0;
+            cornell_box()
         }
     });
 

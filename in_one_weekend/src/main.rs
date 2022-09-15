@@ -1,3 +1,5 @@
+use image::Rgb;
+use image::RgbImage;
 use rand::random;
 
 use rayon::prelude::*;
@@ -179,16 +181,6 @@ fn random_scene() -> HittableList {
 struct IColor(u8, u8, u8);
 type Screen = Vec<Color>;
 
-fn write_color(mut c: Color, samples_per_pixel: f64) {
-    c = (1.0/samples_per_pixel) * c;
-
-    // gamma correction with gamma = 2
-    let r = (256.0 * c.0.sqrt().clamp(0.0, 0.999)) as u8;
-    let g = (256.0 * c.1.sqrt().clamp(0.0, 0.999)) as u8;
-    let b = (256.0 * c.2.sqrt().clamp(0.0, 0.999)) as u8;
-    println!("{} {} {}", r, g, b);
-}
-
 fn render(world: &Box<dyn Hittable>, (image_width, image_height): (usize, usize), max_depth: i32, background: &Color, cam: &Camera, samples_per_pixel: i32) -> Screen {
     let mut screen = vec![Vec3(0.0,0.0,0.0); image_height*image_width];
 
@@ -254,7 +246,7 @@ fn main() {
             /* samples_per_pixel = 200; */
             aspect_ratio = 1.0;
             image_width = 600;
-            samples_per_pixel = 1000;
+            samples_per_pixel = 24;
             look_from = Vec3(278.0, 278.0, -800.0);
             look_at = Vec3(278.0, 278.0, 0.0);
             background = Vec3(0.0, 0.0, 0.0);
@@ -265,6 +257,8 @@ fn main() {
     let image_height: usize = ((image_width as f64) / aspect_ratio) as usize;
 
     let cam = build_camera(look_from, look_at, v_up, vfov_deg, aspect_ratio, aperture, dist_to_focus);
+
+    let mut img = RgbImage::new(image_width as u32, image_height as u32);
 
     if let Some(screen) = (0..samples_per_pixel).collect::<Vec<usize>>().par_iter()
         .map(|n| {
@@ -280,11 +274,18 @@ fn main() {
         }
         s1
     }) {
-        print!("P3\n{} {}\n255\n", image_width, image_height);
-        for j in (0..image_height).rev() {
+        for j in 0..image_height {
             for i in 0..image_width {
-                write_color(screen[j*image_width+i], samples_per_pixel as f64);
+                let c = (1.0/samples_per_pixel as f64) * screen[j*image_width+i];
+
+                // gamma correction with gamma = 2
+                let r = (256.0 * c.0.sqrt().clamp(0.0, 0.999)) as u8;
+                let g = (256.0 * c.1.sqrt().clamp(0.0, 0.999)) as u8;
+                let b = (256.0 * c.2.sqrt().clamp(0.0, 0.999)) as u8;
+
+                img.put_pixel(i as u32, (image_height-j-1) as u32, Rgb([r, g, b]));
             }
         }
     }
+    img.save("1.png").expect("write failed");
 }

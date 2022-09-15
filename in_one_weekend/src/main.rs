@@ -2,7 +2,6 @@ use image::Frame;
 use image::Rgba;
 use image::codecs::gif::GifEncoder;
 use image::codecs::gif::Repeat;
-use std::borrow::Borrow;
 use std::fs::File;
 use image::RgbaImage;
 use rand::random;
@@ -221,7 +220,7 @@ struct Scene {
     max_depth: i32,
 }
 
-fn build_frame(world: &Box<dyn Hittable>, v: &View, s: &Scene) -> RgbaImage {
+fn build_frame(bar: &ProgressBar, world: &Box<dyn Hittable>, v: &View, s: &Scene) -> RgbaImage {
     let image_height: usize = ((s.image_width as f64) / s.aspect_ratio) as usize;
 
     let cam = build_camera(v.look_from, v.look_at, v.v_up, v.vfov_deg, s.aspect_ratio, v.aperture, v.dist_to_focus);
@@ -229,8 +228,8 @@ fn build_frame(world: &Box<dyn Hittable>, v: &View, s: &Scene) -> RgbaImage {
     let mut img = RgbaImage::new(s.image_width as u32, image_height as u32);
 
     if let Some(screen) = (0..s.samples_per_pixel).collect::<Vec<usize>>().par_iter()
-        .map(|n| {
-            //eprintln!("iteration {} started", n);
+        .map(|_| {
+            bar.inc(1);
             render(world, (s.image_width, image_height), s.max_depth, &s.background, &cam)
         })
         .reduce_with(|mut s1, s2| {
@@ -264,6 +263,8 @@ struct Animation {
     f: fn (&View, f64) -> View,
 }
 
+use indicatif::ProgressBar;
+
 fn main() {
     let mut s = Scene {
         aspect_ratio: 16.0 / 9.0,
@@ -281,12 +282,12 @@ fn main() {
         vfov_deg: 40.0,
     };
     let mut a = Animation {
-        num_frames: 100,
+        num_frames: 1,
         f: |v, _t| { v.clone() },
     };
 
     // World
-    let wp: Box<dyn Hittable> = Box::new(match 0 {
+    let wp: Box<dyn Hittable> = Box::new(match 6 {
         1 => {
             v.aperture = 0.1;
             v.vfov_deg = 20.0;
@@ -314,7 +315,7 @@ fn main() {
         6 => {
             s.aspect_ratio = 1.0;
             s.image_width = 600;
-            s.samples_per_pixel = 200;
+            s.samples_per_pixel = 10000;
             v.look_from = Vec3(278.0, 278.0, -800.0);
             v.look_at = Vec3(278.0, 278.0, 0.0);
             s.background = Vec3(0.0, 0.0, 0.0);
@@ -329,6 +330,7 @@ fn main() {
             v.look_at = Vec3(278.0, 278.0, 0.0);
             s.background = Vec3(0.0, 0.0, 0.0);
 
+            a.num_frames = 100;
             a.f = |v, t| { let mut z = v.clone(); z.look_from = Vec3(2.0*278.0*t, 278.0, -800.0); z};
             cornell_box()
         }
@@ -337,9 +339,9 @@ fn main() {
     let mut encoder = GifEncoder::new(file_out);
     encoder.set_repeat(Repeat::Infinite).expect("setting repeat failed");
 
+    let bar = ProgressBar::new((a.num_frames * s.samples_per_pixel) as u64);
     let fs = (0..a.num_frames).collect::<Vec<usize>>().par_iter().map(|frame_num| {
-        eprintln!("frame {} started", frame_num);
-        build_frame(&wp, &(a.f)(&v, *frame_num as f64 / a.num_frames as f64), &s)
+        build_frame(&bar, &wp, &(a.f)(&v, *frame_num as f64 / a.num_frames as f64), &s)
     }).collect::<Vec<RgbaImage>>();
     for i in 0..fs.len() {
         encoder.encode_frame(Frame::new(fs[i].clone())).expect("failed encoding");

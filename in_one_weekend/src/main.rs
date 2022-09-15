@@ -1,5 +1,10 @@
-use image::Rgb;
-use image::RgbImage;
+use image::Frame;
+use image::Rgba;
+use image::codecs::gif::GifEncoder;
+use image::codecs::gif::Repeat;
+use std::borrow::Borrow;
+use std::fs::File;
+use image::RgbaImage;
 use rand::random;
 
 use rayon::prelude::*;
@@ -181,19 +186,16 @@ fn random_scene() -> HittableList {
 struct IColor(u8, u8, u8);
 type Screen = Vec<Color>;
 
-fn render(world: &Box<dyn Hittable>, (image_width, image_height): (usize, usize), max_depth: i32, background: &Color, cam: &Camera, samples_per_pixel: i32) -> Screen {
+fn render(world: &Box<dyn Hittable>, (image_width, image_height): (usize, usize), max_depth: i32, background: &Color, cam: &Camera) -> Screen {
     let mut screen = vec![Vec3(0.0,0.0,0.0); image_height*image_width];
 
     for j in (0..image_height).rev() {
         for i in 0..image_width {
             let mut pixel_color = Vec3(0.0, 0.0, 0.0);
-            for _ in 0..samples_per_pixel {
-                let u = (i as f64 + random::<f64>()) / (image_width as f64 - 1.0);
-                let v = (j as f64 + random::<f64>()) / (image_height as f64 - 1.0);
-                let r = cam.get_ray(u, v);
-                pixel_color = pixel_color + ray_color(&r, background, &**world, max_depth);
-            }
-            pixel_color = (1.0/samples_per_pixel as f64) * pixel_color;
+            let u = (i as f64 + random::<f64>()) / (image_width as f64 - 1.0);
+            let v = (j as f64 + random::<f64>()) / (image_height as f64 - 1.0);
+            let r = cam.get_ray(u, v);
+            pixel_color = pixel_color + ray_color(&r, background, &**world, max_depth);
             screen[j*image_width+i] = pixel_color;
         }
     } 
@@ -201,91 +203,148 @@ fn render(world: &Box<dyn Hittable>, (image_width, image_height): (usize, usize)
     screen
 }
 
-fn main() {
-    let mut aspect_ratio: f64 = 16.0 / 9.0;
-    let mut image_width : usize = 400;
-    let max_depth: i32 = 50;
-    let mut vfov_deg = 40.0;
+#[derive(Clone)]
+struct View {
+    look_from: Vec3,
+    look_at: Vec3,
+    v_up: Vec3,
+    vfov_deg: f64,
+    aperture: f64,
+    dist_to_focus: f64,
+}
 
-    // Camera
-    let mut look_from = Vec3(13.0, 2.0, 3.0);
-    let mut look_at = Vec3(0.0, 0.0, 0.0);
-    let mut v_up = Vec3(0.0, 1.0, 0.0);
-    let dist_to_focus = 10.0;
-    let mut aperture = 0.0;
-    let mut samples_per_pixel = 36;
-    let mut background = Vec3(0.7, 0.8, 1.0);
+struct Scene {
+    aspect_ratio: f64,
+    image_width: usize,
+    samples_per_pixel: usize,
+    background: Vec3,
+    max_depth: i32,
+}
 
-    // World
-    let wp: Box<dyn Hittable> = Box::new(match 0 {
-        1 => {
-            aperture = 0.1;
-            vfov_deg = 20.0;
-            random_scene()
-        }
-        2 => {
-            vfov_deg = 20.0;
-            two_spheres()
-        }
-        3 => {
-            vfov_deg = 20.0;
-            two_perlin_spheres()
-        }
-        4 => {
-            vfov_deg = 20.0;
-            earth()
-        }
-        5 => {
-            look_from = Vec3(26.0, 3.0, 0.0);
-            look_at = Vec3(0.0, 2.0, 0.0);
-            v_up = Vec3(0.0, 1.0, 0.0);
-            background = Vec3(0.0, 0.0, 0.0);
-            simple_light()
-        }
-        _ => {
-            /* samples_per_pixel = 200; */
-            aspect_ratio = 1.0;
-            image_width = 600;
-            samples_per_pixel = 24;
-            look_from = Vec3(278.0, 278.0, -800.0);
-            look_at = Vec3(278.0, 278.0, 0.0);
-            background = Vec3(0.0, 0.0, 0.0);
-            cornell_box()
-        }
-    });
+fn build_frame(world: &Box<dyn Hittable>, v: &View, s: &Scene) -> RgbaImage {
+    let image_height: usize = ((s.image_width as f64) / s.aspect_ratio) as usize;
 
-    let image_height: usize = ((image_width as f64) / aspect_ratio) as usize;
+    let cam = build_camera(v.look_from, v.look_at, v.v_up, v.vfov_deg, s.aspect_ratio, v.aperture, v.dist_to_focus);
 
-    let cam = build_camera(look_from, look_at, v_up, vfov_deg, aspect_ratio, aperture, dist_to_focus);
+    let mut img = RgbaImage::new(s.image_width as u32, image_height as u32);
 
-    let mut img = RgbImage::new(image_width as u32, image_height as u32);
-
-    if let Some(screen) = (0..samples_per_pixel).collect::<Vec<usize>>().par_iter()
+    if let Some(screen) = (0..s.samples_per_pixel).collect::<Vec<usize>>().par_iter()
         .map(|n| {
-            eprintln!("iteration {} started", n);
-            render(&wp, (image_width, image_height), max_depth, &background, &cam, 1)
+            //eprintln!("iteration {} started", n);
+            render(world, (s.image_width, image_height), s.max_depth, &s.background, &cam)
         })
         .reduce_with(|mut s1, s2| {
         for j in 0..image_height {
-            for i in 0..image_width {
-                let pos = j*image_width+i;
+            for i in 0..s.image_width {
+                let pos = j*s.image_width+i;
                 s1[pos] = s1[pos] + s2[pos];
             }
         }
         s1
     }) {
         for j in 0..image_height {
-            for i in 0..image_width {
-                let c = (1.0/samples_per_pixel as f64) * screen[j*image_width+i];
+            for i in 0..s.image_width {
+                let c = (1.0/s.samples_per_pixel as f64) * screen[j*s.image_width+i];
 
                 // gamma correction with gamma = 2
                 let r = (256.0 * c.0.sqrt().clamp(0.0, 0.999)) as u8;
                 let g = (256.0 * c.1.sqrt().clamp(0.0, 0.999)) as u8;
                 let b = (256.0 * c.2.sqrt().clamp(0.0, 0.999)) as u8;
 
-                img.put_pixel(i as u32, (image_height-j-1) as u32, Rgb([r, g, b]));
+                img.put_pixel(i as u32, (image_height-j-1) as u32, Rgba([r, g, b, 255]));
             }
         }
     }
-    img.save("1.png").expect("write failed");
+
+    img
+}
+
+struct Animation {
+    num_frames: usize,
+    f: fn (&View, f64) -> View,
+}
+
+fn main() {
+    let mut s = Scene {
+        aspect_ratio: 16.0 / 9.0,
+        image_width: 400,
+        max_depth: 50,
+        samples_per_pixel: 36,
+        background: Vec3(0.7, 0.8, 1.0),
+    };
+    let mut v = View {
+        look_from: Vec3(13.0, 2.0, 3.0),
+        look_at: Vec3(0.0, 0.0, 0.0),
+        v_up: Vec3(0.0, 1.0, 0.0),
+        dist_to_focus: 10.0,
+        aperture: 0.0,
+        vfov_deg: 40.0,
+    };
+    let mut a = Animation {
+        num_frames: 100,
+        f: |v, _t| { v.clone() },
+    };
+
+    // World
+    let wp: Box<dyn Hittable> = Box::new(match 0 {
+        1 => {
+            v.aperture = 0.1;
+            v.vfov_deg = 20.0;
+            random_scene()
+        }
+        2 => {
+            v.vfov_deg = 20.0;
+            two_spheres()
+        }
+        3 => {
+            v.vfov_deg = 20.0;
+            two_perlin_spheres()
+        }
+        4 => {
+            v.vfov_deg = 20.0;
+            earth()
+        }
+        5 => {
+            v.look_from = Vec3(26.0, 3.0, 0.0);
+            v.look_at = Vec3(0.0, 2.0, 0.0);
+            v.v_up = Vec3(0.0, 1.0, 0.0);
+            s.background = Vec3(0.0, 0.0, 0.0);
+            simple_light()
+        }
+        6 => {
+            s.aspect_ratio = 1.0;
+            s.image_width = 600;
+            s.samples_per_pixel = 200;
+            v.look_from = Vec3(278.0, 278.0, -800.0);
+            v.look_at = Vec3(278.0, 278.0, 0.0);
+            s.background = Vec3(0.0, 0.0, 0.0);
+
+            cornell_box()
+        }
+        _ => {
+            s.aspect_ratio = 1.0;
+            s.image_width = 300;
+            s.samples_per_pixel = 800;
+            v.look_from = Vec3(278.0, 278.0, -800.0);
+            v.look_at = Vec3(278.0, 278.0, 0.0);
+            s.background = Vec3(0.0, 0.0, 0.0);
+
+            a.f = |v, t| { let mut z = v.clone(); z.look_from = Vec3(2.0*278.0*t, 278.0, -800.0); z};
+            cornell_box()
+        }
+    });
+    let file_out = File::create("out.gif").unwrap();
+    let mut encoder = GifEncoder::new(file_out);
+    encoder.set_repeat(Repeat::Infinite).expect("setting repeat failed");
+
+    let fs = (0..a.num_frames).collect::<Vec<usize>>().par_iter().map(|frame_num| {
+        eprintln!("frame {} started", frame_num);
+        build_frame(&wp, &(a.f)(&v, *frame_num as f64 / a.num_frames as f64), &s)
+    }).collect::<Vec<RgbaImage>>();
+    for i in 0..fs.len() {
+        encoder.encode_frame(Frame::new(fs[i].clone())).expect("failed encoding");
+    };
+    for img in fs.into_iter().rev() {
+        encoder.encode_frame(Frame::new(img)).expect("failed encoding");
+    };
 }

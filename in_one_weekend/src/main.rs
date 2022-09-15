@@ -74,11 +74,6 @@ fn simple_light() -> HittableList {
     let difflight = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 4.0*Vec3(1.0, 1.0, 1.0)})});
     objects.push(Box::new(XZRect{p1: Vec2(-1.0, -1.0), p2: Vec2(1.0, 1.0), k: 0.0, material: difflight}));
 
-    /*
-    let difflight = DiffuseLight{emit: Box::new(SolidColor{color: Vec3(1.0, 1.0, 1.0)})};
-    objects.push(Sphere::box_new(Vec3(0.0, 7.0, 0.0), 2.0, difflight));
-    */
-
     let bvh = BVHNode::new(objects);
     let mut world = HittableList{objects: vec![]};
     world.objects.push(Box::new(bvh));
@@ -182,25 +177,20 @@ fn random_scene() -> HittableList {
 
 #[derive(Copy, Clone)]
 struct IColor(u8, u8, u8);
-type Screen = Vec<IColor>;
+type Screen = Vec<Color>;
 
-fn set_color(screen: &mut Screen, image_width: usize, (row, col): (usize, usize), c: Color, samples_per_pixes: i32) {
-    let scale = 1.0 / samples_per_pixes as f64;
+fn write_color(mut c: Color, samples_per_pixel: f64) {
+    c = (1.0/samples_per_pixel) * c;
 
     // gamma correction with gamma = 2
-    let r = (c.0 * scale).sqrt();
-    let g = (c.1 * scale).sqrt();
-    let b = (c.2 * scale).sqrt();
-
-    screen[row*image_width+col] = IColor(
-    (256.0 * r.clamp(0.0, 0.999)) as u8,
-    (256.0 * g.clamp(0.0, 0.999)) as u8,
-    (256.0 * b.clamp(0.0, 0.999)) as u8,
-    );
+    let r = (256.0 * c.0.sqrt().clamp(0.0, 0.999)) as u8;
+    let g = (256.0 * c.1.sqrt().clamp(0.0, 0.999)) as u8;
+    let b = (256.0 * c.2.sqrt().clamp(0.0, 0.999)) as u8;
+    println!("{} {} {}", r, g, b);
 }
 
 fn render(world: &Box<dyn Hittable>, (image_width, image_height): (usize, usize), max_depth: i32, background: &Color, cam: &Camera, samples_per_pixel: i32) -> Screen {
-    let mut screen = vec![IColor(0,0,0); image_height*image_width];
+    let mut screen = vec![Vec3(0.0,0.0,0.0); image_height*image_width];
 
     for j in (0..image_height).rev() {
         for i in 0..image_width {
@@ -211,71 +201,70 @@ fn render(world: &Box<dyn Hittable>, (image_width, image_height): (usize, usize)
                 let r = cam.get_ray(u, v);
                 pixel_color = pixel_color + ray_color(&r, background, &**world, max_depth);
             }
-            set_color(&mut screen, image_width, (j, i), pixel_color, samples_per_pixel);
+            pixel_color = (1.0/samples_per_pixel as f64) * pixel_color;
+            screen[j*image_width+i] = pixel_color;
         }
     } 
 
     screen
 }
 
-fn blend(c1: IColor, c2: IColor) -> IColor {
-    IColor(
-        ((c1.0 as i16 + c2.0 as i16)/2) as u8,
-        ((c1.1 as i16 + c2.1 as i16)/2) as u8,
-        ((c1.2 as i16 + c2.2 as i16)/2) as u8,)
-}
-
 fn main() {
-    let mut aspect_ratio: f64 = 3.0 / 2.0;
-    let mut image_width : usize = 1200;
+    let mut aspect_ratio: f64 = 16.0 / 9.0;
+    let mut image_width : usize = 400;
     let max_depth: i32 = 50;
+    let mut vfov_deg = 40.0;
 
     // Camera
     let mut look_from = Vec3(13.0, 2.0, 3.0);
     let mut look_at = Vec3(0.0, 0.0, 0.0);
     let mut v_up = Vec3(0.0, 1.0, 0.0);
-    let mut dist_to_focus = 10.0;
-    let aperture = 0.1;
+    let dist_to_focus = 10.0;
+    let mut aperture = 0.0;
     let mut samples_per_pixel = 36;
     let mut background = Vec3(0.7, 0.8, 1.0);
 
     // World
-    let wp: Box<dyn Hittable> = Box::new(match 6 {
-        1 => random_scene(),
-        2 => two_spheres(),
-        3 => two_perlin_spheres(),
-        4 => earth(),
+    let wp: Box<dyn Hittable> = Box::new(match 0 {
+        1 => {
+            aperture = 0.1;
+            vfov_deg = 20.0;
+            random_scene()
+        }
+        2 => {
+            vfov_deg = 20.0;
+            two_spheres()
+        }
+        3 => {
+            vfov_deg = 20.0;
+            two_perlin_spheres()
+        }
+        4 => {
+            vfov_deg = 20.0;
+            earth()
+        }
         5 => {
             look_from = Vec3(26.0, 3.0, 0.0);
             look_at = Vec3(0.0, 2.0, 0.0);
             v_up = Vec3(0.0, 1.0, 0.0);
             background = Vec3(0.0, 0.0, 0.0);
-            dist_to_focus = 20.0;
             simple_light()
         }
         _ => {
-            /* world = cornell_box();
+            /* samples_per_pixel = 200; */
             aspect_ratio = 1.0;
             image_width = 600;
-            samples_per_pixel = 200;
-            background = color(0,0,0);
-            lookfrom = point3(278, 278, -800);
-            lookat = point3(278, 278, 0);
-            vfov = 40.0; */
-            aspect_ratio = 1.0;
-            image_width = 600;
-            samples_per_pixel = 24;
+            samples_per_pixel = 1000;
             look_from = Vec3(278.0, 278.0, -800.0);
             look_at = Vec3(278.0, 278.0, 0.0);
             background = Vec3(0.0, 0.0, 0.0);
-            dist_to_focus = 40.0;
             cornell_box()
         }
     });
 
     let image_height: usize = ((image_width as f64) / aspect_ratio) as usize;
 
-    let cam = build_camera(look_from, look_at, v_up, 20.0, aspect_ratio, aperture, dist_to_focus);
+    let cam = build_camera(look_from, look_at, v_up, vfov_deg, aspect_ratio, aperture, dist_to_focus);
 
     if let Some(screen) = (0..samples_per_pixel).collect::<Vec<usize>>().par_iter()
         .map(|n| {
@@ -286,7 +275,7 @@ fn main() {
         for j in 0..image_height {
             for i in 0..image_width {
                 let pos = j*image_width+i;
-                s1[pos] = blend(s1[pos], s2[pos]);
+                s1[pos] = s1[pos] + s2[pos];
             }
         }
         s1
@@ -294,8 +283,7 @@ fn main() {
         print!("P3\n{} {}\n255\n", image_width, image_height);
         for j in (0..image_height).rev() {
             for i in 0..image_width {
-                let ic = screen[j*image_width+i];
-                println!("{} {} {}", ic.0, ic.1, ic.2);
+                write_color(screen[j*image_width+i], samples_per_pixel as f64);
             }
         }
     }

@@ -1,5 +1,5 @@
 use crate::vec3::*;
-use crate::metal::*;
+use crate::material::*;
 use crate::aabb::*;
 use crate::ray::*;
 

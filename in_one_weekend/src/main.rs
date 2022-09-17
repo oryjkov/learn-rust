@@ -19,6 +19,8 @@ pub mod sphere;
 pub mod texture;
 pub mod perlin;
 pub mod rectangle;
+pub mod material;
+pub mod lambertian;
 
 use crate::vec3::*;
 use camera::*;
@@ -30,6 +32,7 @@ use crate::sphere::*;
 use crate::texture::*;
 use crate::perlin::*;
 use crate::rectangle::*;
+use crate::lambertian::*;
 
 fn cornell_box() -> HittableList {
     let mut objects: Vec<Box<dyn Hittable>> = vec![];
@@ -315,7 +318,7 @@ fn main() {
         6 => {
             s.aspect_ratio = 1.0;
             s.image_width = 600;
-            s.samples_per_pixel = 10000;
+            s.samples_per_pixel = 100;
             v.look_from = Vec3(278.0, 278.0, -800.0);
             v.look_at = Vec3(278.0, 278.0, 0.0);
             s.background = Vec3(0.0, 0.0, 0.0);

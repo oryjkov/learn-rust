@@ -2,28 +2,8 @@ use crate::vec3::*;
 use crate::hit::*;
 use crate::ray::*;
 use crate::texture::*;
+use crate::material::*;
 use rand::random;
-
-pub trait Material: Sync {
-	fn scatter(&self, r_in: &Ray, hr: &HitRecord) -> Option<(Color, Ray)>;
-	fn emitted(&self, _coord: Vec2, _p: &Point3) -> Color {
-		Vec3(0.0, 0.0, 0.0)
-	}
-}
-
-pub struct Lambertian {
-	pub albedo: Box<dyn Texture>,
-}
-
-impl Material for Lambertian {
-	fn scatter(&self, _: &Ray, hr: &HitRecord) -> Option<(Color, Ray)> {
-		let mut scatter_direction = hr.normal + random_unit_vector();
-		if scatter_direction.near_zero() {
-			scatter_direction = hr.normal
-		}
-		Some((self.albedo.value(hr.coord, &hr.p), Ray{orig: hr.p, dir: scatter_direction}))
-	}
-}
 
 pub struct DiffuseLight {
 	pub emit: Box<dyn Texture>,

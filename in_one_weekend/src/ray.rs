@@ -21,8 +21,8 @@ pub fn ray_color(r: &Ray, background: &Color, world: &dyn Hittable, depth: i32) 
     if let Some(hr) = world.hit(r, 0.001, INFINITY) {
         let emitted = hr.material.emitted(hr.coord, &hr.p);
 
-        if let Some((attenuation, scattered)) = hr.material.scatter(r, &hr) {
-            emitted + attenuation * ray_color(&scattered, background, world, depth-1)
+        if let Some((albedo, scattered, pdf)) = hr.material.scatter(r, &hr) {
+            emitted + albedo * hr.material.scattering_pdf(r, &hr, &scattered) * ray_color(&scattered, background, world, depth-1) * (1.0/pdf)
         } else {
             emitted
         }

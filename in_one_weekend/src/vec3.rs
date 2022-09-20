@@ -119,6 +119,15 @@ pub fn random_in_unit_disk() -> Vec3 {
     }
 }
 
+pub fn random_in_hemisphere(normal: Vec3) -> Vec3 {
+    let v = random_in_unit_sphere();
+    if dot(v, normal) >= 0.0 {
+        v
+    } else {
+        -1.0 * v
+    }
+}
+
 pub fn reflect(v: Vec3, n: Vec3) -> Vec3 {
     v - 2.0 * dot(v, n) * n
 }

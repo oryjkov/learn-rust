@@ -318,7 +318,7 @@ fn main() {
         6 => {
             s.aspect_ratio = 1.0;
             s.image_width = 600;
-            s.samples_per_pixel = 100;
+            s.samples_per_pixel = 1000;
             v.look_from = Vec3(278.0, 278.0, -800.0);
             v.look_at = Vec3(278.0, 278.0, 0.0);
             s.background = Vec3(0.0, 0.0, 0.0);

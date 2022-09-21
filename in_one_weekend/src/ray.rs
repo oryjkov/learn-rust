@@ -1,6 +1,5 @@
 use std::f64::INFINITY;
 
-use crate::pdf::*;
 use crate::vec3::*;
 use crate::hit::*;
 
@@ -23,22 +22,9 @@ pub fn ray_color(r: &Ray, background: &Color, world: &dyn Hittable, lights: &Hit
     if let Some(hr) = world.hit(r, 0.001, INFINITY) {
         let emitted = hr.material.emitted(hr.coord, &hr.p);
 
-        if let Some(albedo) = hr.material.scatter(r, &hr) {
-            let cos_pdf = CosinePDF{normal: &hr.normal};
-            let hit_pdf = HittablePDF{hittable: lights.objects[0].as_ref(), origin: &hr.p};
-            let mix_pdf = MixturePDF{pdf1: &cos_pdf, pdf2: &hit_pdf};
-
-            let (scattered_dir, opt_val) = mix_pdf.gen();
-            let pdf_val = if opt_val.is_some() {
-                opt_val.unwrap()
-            } else {
-                mix_pdf.eval(&scattered_dir)
-            };
-            let scattered = Ray { orig: hr.p, dir: scattered_dir };
-            emitted + albedo *
-             hr.material.scattering_pdf(r, &hr, &scattered) *
-             ray_color(&scattered, background, world, lights, depth-1) *
-             (1.0/pdf_val)
+        if let Some((scatter_dir, color_contribution)) = hr.material.scatter(r, &hr, lights) {
+            let scattered_ray = Ray {orig: hr.p, dir: scatter_dir};
+            emitted + color_contribution * ray_color(&scattered_ray, background, world, lights, depth-1)
         } else {
             emitted
         }

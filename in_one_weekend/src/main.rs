@@ -9,6 +9,7 @@ use rand::random;
 use rayon::prelude::*;
 
 pub mod vec3;
+pub mod dielectric;
 pub mod bvh_node;
 pub mod camera;
 pub mod hit;
@@ -34,6 +35,7 @@ use crate::texture::*;
 use crate::perlin::*;
 use crate::rectangle::*;
 use crate::lambertian::*;
+use crate::dielectric::*;
 
 fn cornell_box() -> HittableList {
     let mut objects: Vec<Box<dyn Hittable>> = vec![];
@@ -56,7 +58,8 @@ fn cornell_box() -> HittableList {
     let white = Box::new(Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.73, 0.73, 0.73)})});
     objects.push(Box::new(XYRect{p1: Vec2(0.0, 0.0), p2: Vec2(555.0, 555.0), k: 555.0, material: white}));
 
-    objects.push(Sphere::box_new(Vec3(200.0, 350.0, 200.0), 80.0, Metal{albedo: Vec3(0.7, 0.6, 0.5), fuzz: 0.0}));
+    objects.push(Sphere::box_new(Vec3(200.0, 350.0, 200.0), 100.0, Metal{albedo: Vec3(0.7, 0.6, 0.5), fuzz: 0.0}));
+    objects.push(Sphere::box_new(Vec3(400.0, 350.0, 200.0), 80.0, Dielectric{ir: 1.5}));
 
     let bvh = BVHNode::new(objects);
     let mut world = HittableList{objects: vec![]};

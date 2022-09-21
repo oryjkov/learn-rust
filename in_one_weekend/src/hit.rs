@@ -23,6 +23,15 @@ impl HitRecord<'_> {
 pub trait Hittable: Sync {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
     fn bounding_box(&self) -> Option<AABB>;
+	fn gen_random_point(&self, origin: &Vec3) -> Vec3 {
+        let _ = origin;
+        Vec3(0.0, 0.0, 0.0)
+    }
+    fn pdf_eval(&self, origin: &Vec3, dir: &Vec3) -> f64 {
+        let _ = origin;
+        let _ = dir;
+        0.0
+    }
 }
 
 pub struct HittableList {

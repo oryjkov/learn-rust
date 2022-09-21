@@ -1,3 +1,5 @@
+use std::f64::INFINITY;
+
 use crate::aabb::*;
 use crate::material::*;
 use crate::ray::*;
@@ -42,6 +44,22 @@ impl Hittable for XYRect {
 		hr.set_face_normal(r, hr.normal);
 		Some(hr)
 	}
+
+	fn gen_random_point(&self, origin: &Vec3) -> Vec3 {
+		Vec3(random_f64(self.p1.0, self.p2.0), random_f64(self.p1.1, self.p2.1), self.k) - *origin
+	}
+
+	fn pdf_eval(&self, origin: &Vec3, dir: &Vec3) -> f64 {
+		let hr = if let Some(x) = self.hit(&Ray { orig: *origin, dir: *dir }, 0.0001, INFINITY) {
+			x
+		} else {
+			return 0.0;
+		};
+		let area = (self.p2.0 - self.p1.0) * (self.p2.1 - self.p1.1);
+		let d_squared = hr.t * hr.t * dir.length_squared();
+		let cos = dot(hr.normal, *dir).abs() / dir.length();
+		d_squared / (cos * area)
+	}
 }
 
 pub struct XZRect {
@@ -79,6 +97,22 @@ impl Hittable for XZRect {
 		};
 		hr.set_face_normal(r, hr.normal);
 		Some(hr)
+	}
+
+	fn gen_random_point(&self, origin: &Vec3) -> Vec3 {
+		Vec3(random_f64(self.p1.0, self.p2.0), self.k, random_f64(self.p1.1, self.p2.1))-*origin
+	}
+
+	fn pdf_eval(&self, origin: &Vec3, dir: &Vec3) -> f64 {
+		let hr = if let Some(x) = self.hit(&Ray { orig: *origin, dir: *dir }, 0.0001, INFINITY) {
+			x
+		} else {
+			return 0.0;
+		};
+		let area = (self.p2.0 - self.p1.0) * (self.p2.1 - self.p1.1);
+		let d_squared = hr.t * hr.t * dir.length_squared();
+		let cos = dot(hr.normal, *dir).abs() / dir.length();
+		d_squared / (cos * area)
 	}
 }
 
@@ -118,4 +152,10 @@ impl Hittable for YZRect {
 		hr.set_face_normal(r, hr.normal);
 		Some(hr)
 	}
+
+	/*
+	fn gen_random_point(&self) -> Vec3 {
+		Vec3(self.k, random_f64(self.p1.0, self.p2.0), random_f64(self.p1.1, self.p2.1))
+	}
+	*/
 }

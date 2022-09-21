@@ -10,7 +10,7 @@ pub struct DiffuseLight {
 }
 
 impl Material for DiffuseLight {
-	fn scatter(&self, _r_in: &Ray, _hr: &HitRecord) -> Option<(Color, Ray, f64)> {
+	fn scatter(&self, _r_in: &Ray, _hr: &HitRecord) -> Option<Color> {
 		None
 	}
 	fn emitted(&self, coord: Vec2, p: &Point3) -> Color {
@@ -24,11 +24,11 @@ pub struct Metal {
 }
 
 impl Material for Metal {
-	fn scatter(&self, r_in: &Ray, hr: &HitRecord) -> Option<(Color, Ray, f64)> {
+	fn scatter(&self, r_in: &Ray, hr: &HitRecord) -> Option<Color> {
 		let reflected = reflect(unit_vector(r_in.dir), hr.normal);
-		let scattered = Ray{orig: hr.p, dir: reflected + self.fuzz*random_in_unit_sphere()};
-		if dot(scattered.dir, hr.normal) > 0.0 {
-			Some((self.albedo, scattered, 0.0))
+		let scattered_dir = reflected + self.fuzz*random_in_unit_sphere();
+		if dot(scattered_dir, hr.normal) > 0.0 {
+			Some(self.albedo)
 		} else {
 			None
 		}
@@ -57,8 +57,9 @@ pub struct Dielectric {
 }
 
 impl Material for Dielectric {
-	fn scatter(&self, r_in: &Ray, hr: &HitRecord) -> Option<(Color, Ray, f64)> {
+	fn scatter(&self, r_in: &Ray, hr: &HitRecord) -> Option<Color> {
 		let attenuation = Vec3(1.0, 1.0, 1.0);
+		/*
 		let refraction_ratio = if hr.front_face {1.0/self.ir} else {self.ir};
 		let unit_direction = unit_vector(r_in.dir);
 
@@ -72,8 +73,8 @@ impl Material for Dielectric {
 		} else {
 			refract(unit_direction, hr.normal, refraction_ratio)
 		};
+		*/
 
-		let scattered = Ray{orig: hr.p, dir: direction};
-		Some((attenuation, scattered, 0.0))
+		Some(attenuation)
 	}
 }

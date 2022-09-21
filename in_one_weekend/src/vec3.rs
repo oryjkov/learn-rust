@@ -132,6 +132,10 @@ pub fn reflect(v: Vec3, n: Vec3) -> Vec3 {
     v - 2.0 * dot(v, n) * n
 }
 
+pub fn random_f64(a: f64, b: f64) -> f64 {
+    random::<f64>()*(b-a)+a
+}
+
 pub fn random_vec3() -> Vec3 {
     Vec3(random::<f64>(),random::<f64>(),random::<f64>(),)
 }

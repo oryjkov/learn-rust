@@ -37,6 +37,10 @@ impl Hittable for BVHNode {
 		}
 		hr
 	}
+
+	fn gen_random_point(&self, _origin: &Vec3) -> Vec3 {
+		panic!("should not call random point on BVHNode");
+	}
 }
 
 impl BVHNode {

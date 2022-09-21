@@ -21,6 +21,7 @@ pub mod perlin;
 pub mod rectangle;
 pub mod material;
 pub mod lambertian;
+pub mod pdf;
 
 use crate::vec3::*;
 use camera::*;
@@ -188,7 +189,7 @@ fn random_scene() -> HittableList {
 struct IColor(u8, u8, u8);
 type Screen = Vec<Color>;
 
-fn render(world: &Box<dyn Hittable>, (image_width, image_height): (usize, usize), max_depth: i32, background: &Color, cam: &Camera) -> Screen {
+fn render(world: &Box<dyn Hittable>, lights: &HittableList, (image_width, image_height): (usize, usize), max_depth: i32, background: &Color, cam: &Camera) -> Screen {
     let mut screen = vec![Vec3(0.0,0.0,0.0); image_height*image_width];
 
     for j in (0..image_height).rev() {
@@ -197,7 +198,7 @@ fn render(world: &Box<dyn Hittable>, (image_width, image_height): (usize, usize)
             let u = (i as f64 + random::<f64>()) / (image_width as f64 - 1.0);
             let v = (j as f64 + random::<f64>()) / (image_height as f64 - 1.0);
             let r = cam.get_ray(u, v);
-            pixel_color = pixel_color + ray_color(&r, background, &**world, max_depth);
+            pixel_color = pixel_color + ray_color(&r, background, &**world, lights, max_depth);
             screen[j*image_width+i] = pixel_color;
         }
     } 
@@ -223,7 +224,7 @@ struct Scene {
     max_depth: i32,
 }
 
-fn build_frame(bar: &ProgressBar, world: &Box<dyn Hittable>, v: &View, s: &Scene) -> RgbaImage {
+fn build_frame(bar: &ProgressBar, world: &Box<dyn Hittable>, lights: &HittableList, v: &View, s: &Scene) -> RgbaImage {
     let image_height: usize = ((s.image_width as f64) / s.aspect_ratio) as usize;
 
     let cam = build_camera(v.look_from, v.look_at, v.v_up, v.vfov_deg, s.aspect_ratio, v.aperture, v.dist_to_focus);
@@ -233,7 +234,7 @@ fn build_frame(bar: &ProgressBar, world: &Box<dyn Hittable>, v: &View, s: &Scene
     if let Some(screen) = (0..s.samples_per_pixel).collect::<Vec<usize>>().par_iter()
         .map(|_| {
             bar.inc(1);
-            render(world, (s.image_width, image_height), s.max_depth, &s.background, &cam)
+            render(world, lights, (s.image_width, image_height), s.max_depth, &s.background, &cam)
         })
         .reduce_with(|mut s1, s2| {
         for j in 0..image_height {
@@ -318,7 +319,7 @@ fn main() {
         6 => {
             s.aspect_ratio = 1.0;
             s.image_width = 600;
-            s.samples_per_pixel = 1000;
+            s.samples_per_pixel = 100;
             v.look_from = Vec3(278.0, 278.0, -800.0);
             v.look_at = Vec3(278.0, 278.0, 0.0);
             s.background = Vec3(0.0, 0.0, 0.0);
@@ -338,13 +339,18 @@ fn main() {
             cornell_box()
         }
     });
+
+    let mut lights = HittableList{objects: vec![]};
+    let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
+    lights.objects.push(Box::new(XZRect{p1: Vec2(213.0, 227.0), p2: Vec2(343.0, 332.0), k: 554.0, material: light}));
+
     let file_out = File::create("out.gif").unwrap();
     let mut encoder = GifEncoder::new(file_out);
     encoder.set_repeat(Repeat::Infinite).expect("setting repeat failed");
 
     let bar = ProgressBar::new((a.num_frames * s.samples_per_pixel) as u64);
     let fs = (0..a.num_frames).collect::<Vec<usize>>().par_iter().map(|frame_num| {
-        build_frame(&bar, &wp, &(a.f)(&v, *frame_num as f64 / a.num_frames as f64), &s)
+        build_frame(&bar, &wp, &lights, &(a.f)(&v, *frame_num as f64 / a.num_frames as f64), &s)
     }).collect::<Vec<RgbaImage>>();
     for i in 0..fs.len() {
         encoder.encode_frame(Frame::new(fs[i].clone())).expect("failed encoding");

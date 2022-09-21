@@ -19,10 +19,8 @@ impl Material for Lambertian {
 		let cosine = dot(hr.normal, unit_vector(scattered.dir));
 		if cosine > 0.0 {
 			cosine / PI
-			//0.5 / PI
 		} else {
 			0.0
 		}
 	}
-
 }

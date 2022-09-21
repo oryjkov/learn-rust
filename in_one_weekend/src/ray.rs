@@ -14,7 +14,8 @@ impl Ray {
     }
 }
 
-pub fn ray_color(r: &Ray, background: &Color, world: &dyn Hittable, lights: &HittableList, depth: i32) -> Color {
+pub fn ray_color(r: &Ray, background: &Color, world: &dyn Hittable, lights: &HittableList,
+    depth: i32) -> Color {
     if depth <= 0 {
         return Vec3(0.0, 0.0, 0.0);
     }
@@ -33,10 +34,10 @@ pub fn ray_color(r: &Ray, background: &Color, world: &dyn Hittable, lights: &Hit
             } else {
                 mix_pdf.eval(&scattered_dir)
             };
-            let scattered1 = Ray { orig: hr.p, dir: scattered_dir };
+            let scattered = Ray { orig: hr.p, dir: scattered_dir };
             emitted + albedo *
-             hr.material.scattering_pdf(r, &hr, &scattered1) *
-             ray_color(&scattered1, background, world, lights, depth-1) *
+             hr.material.scattering_pdf(r, &hr, &scattered) *
+             ray_color(&scattered, background, world, lights, depth-1) *
              (1.0/pdf_val)
         } else {
             emitted

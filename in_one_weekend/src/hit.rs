@@ -2,6 +2,7 @@ use crate::vec3::*;
 use crate::material::*;
 use crate::aabb::*;
 use crate::ray::*;
+use rand::random;
 
 pub struct HitRecord<'a> {
     // Point where the hit happened.
@@ -66,5 +67,13 @@ impl Hittable for HittableList {
             }
         }
         Some(bb)
+    }
+    fn pdf_eval(&self, origin: &Vec3, dir: &Vec3) -> f64 {
+        let w = 1.0/self.objects.len() as f64;
+        self.objects.iter().map(|x| {w*x.pdf_eval(origin, dir)} ).sum()
+    }
+    fn gen_random_point(&self, origin: &Vec3) -> Vec3 {
+        let n = random::<usize>() % self.objects.len();
+        self.objects[n].gen_random_point(origin)
     }
 }

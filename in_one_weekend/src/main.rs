@@ -234,8 +234,8 @@ struct Scene {
 
 fn build_frame(bar: &ProgressBar, world: &Box<dyn Hittable>, lights: &HittableList, v: &View, s: &Scene) -> RgbaImage {
     let image_height: usize = ((s.image_width as f64) / s.aspect_ratio) as usize;
-
-    let cam = build_camera(v.look_from, v.look_at, v.v_up, v.vfov_deg, s.aspect_ratio, v.aperture, v.dist_to_focus);
+    let image_width = s.image_width;
+    let save_temps = s.save_temps;
 
     let img = {
         let mut img = RgbaImage::new(s.image_width as u32, image_height as u32);
@@ -243,9 +243,6 @@ fn build_frame(bar: &ProgressBar, world: &Box<dyn Hittable>, lights: &HittableLi
         let (tx, rx): (Sender<Screen>, Receiver<Screen>) = channel();
         let atx = Arc::new(Mutex::new(tx));
 
-        let image_width = s.image_width;
-        let spp = s.samples_per_pixel;
-        let save_temps = s.save_temps;
         let handler = std::thread::spawn(move || {
             let mut screen_accumulator = vec![Vec3(0.0,0.0,0.0); image_height*image_width];
             let mut cnt = 0;
@@ -255,7 +252,7 @@ fn build_frame(bar: &ProgressBar, world: &Box<dyn Hittable>, lights: &HittableLi
                 if (save_temps > 0 && cnt % save_temps == 0) || tmp_r.is_err() {
                     for j in 0..image_height {
                         for i in 0..image_width {
-                            let c: Color = (1.0/spp as f64) * screen_accumulator[j*image_width+i];
+                            let c: Color = (1.0/cnt as f64) * screen_accumulator[j*image_width+i];
 
                             // gamma correction with gamma = 2
                             let r = (256.0 * c.0.sqrt().clamp(0.0, 0.999)) as u8;
@@ -281,6 +278,7 @@ fn build_frame(bar: &ProgressBar, world: &Box<dyn Hittable>, lights: &HittableLi
             img
         });
 
+        let cam = build_camera(v.look_from, v.look_at, v.v_up, v.vfov_deg, s.aspect_ratio, v.aperture, v.dist_to_focus);
         let _: Vec<_> = (0..s.samples_per_pixel).collect::<Vec<usize>>().par_iter()
             .map(|_| {
                 let s = render(world, lights, (s.image_width, image_height), s.max_depth, &s.background, &cam);
@@ -353,7 +351,7 @@ fn main() {
         6 => {
             s.aspect_ratio = 1.0;
             s.image_width = 600;
-            s.samples_per_pixel = 100;
+            s.samples_per_pixel = 1000;
             v.look_from = Vec3(278.0, 278.0, -800.0);
             v.look_at = Vec3(278.0, 278.0, 0.0);
             s.background = Vec3(0.0, 0.0, 0.0);
@@ -378,14 +376,15 @@ fn main() {
     let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
     lights.objects.push(Box::new(XZRect{p1: Vec2(213.0, 227.0), p2: Vec2(343.0, 332.0), k: 554.0, material: light}));
 
-    let file_out = File::create("out.gif").unwrap();
-    let mut encoder = GifEncoder::new(file_out);
-    encoder.set_repeat(Repeat::Infinite).expect("setting repeat failed");
 
     let bar = ProgressBar::new((a.num_frames * s.samples_per_pixel) as u64);
     let fs = (0..a.num_frames).collect::<Vec<usize>>().par_iter().map(|frame_num| {
         build_frame(&bar, &wp, &lights, &(a.f)(&v, *frame_num as f64 / a.num_frames as f64), &s)
     }).collect::<Vec<RgbaImage>>();
+
+    let file_out = File::create("out.gif").unwrap();
+    let mut encoder = GifEncoder::new(file_out);
+    encoder.set_repeat(Repeat::Infinite).expect("setting repeat failed");
     for i in 0..fs.len() {
         encoder.encode_frame(Frame::new(fs[i].clone())).expect("failed encoding");
     };

@@ -5,6 +5,8 @@ use image::codecs::gif::Repeat;
 use std::fs::File;
 use image::RgbaImage;
 use rand::random;
+use std::sync::mpsc::*;
+use std::sync::{Arc, Mutex};
 
 use rayon::prelude::*;
 
@@ -227,6 +229,7 @@ struct Scene {
     samples_per_pixel: usize,
     background: Vec3,
     max_depth: i32,
+    save_temps: usize,
 }
 
 fn build_frame(bar: &ProgressBar, world: &Box<dyn Hittable>, lights: &HittableList, v: &View, s: &Scene) -> RgbaImage {
@@ -234,36 +237,61 @@ fn build_frame(bar: &ProgressBar, world: &Box<dyn Hittable>, lights: &HittableLi
 
     let cam = build_camera(v.look_from, v.look_at, v.v_up, v.vfov_deg, s.aspect_ratio, v.aperture, v.dist_to_focus);
 
-    let mut img = RgbaImage::new(s.image_width as u32, image_height as u32);
+    let img = {
+        let mut img = RgbaImage::new(s.image_width as u32, image_height as u32);
 
-    if let Some(screen) = (0..s.samples_per_pixel).collect::<Vec<usize>>().par_iter()
-        .map(|_| {
-            bar.inc(1);
-            render(world, lights, (s.image_width, image_height), s.max_depth, &s.background, &cam)
-        })
-        .reduce_with(|mut s1, s2| {
-        for j in 0..image_height {
-            for i in 0..s.image_width {
-                let pos = j*s.image_width+i;
-                s1[pos] = s1[pos] + s2[pos];
+        let (tx, rx): (Sender<Screen>, Receiver<Screen>) = channel();
+        let atx = Arc::new(Mutex::new(tx));
+
+        let image_width = s.image_width;
+        let spp = s.samples_per_pixel;
+        let save_temps = s.save_temps;
+        let handler = std::thread::spawn(move || {
+            let mut screen_accumulator = vec![Vec3(0.0,0.0,0.0); image_height*image_width];
+            let mut cnt = 0;
+            loop {
+                cnt += 1;
+                let tmp_r = rx.recv();
+                if (save_temps > 0 && cnt % save_temps == 0) || tmp_r.is_err() {
+                    for j in 0..image_height {
+                        for i in 0..image_width {
+                            let c: Color = (1.0/spp as f64) * screen_accumulator[j*image_width+i];
+
+                            // gamma correction with gamma = 2
+                            let r = (256.0 * c.0.sqrt().clamp(0.0, 0.999)) as u8;
+                            let g = (256.0 * c.1.sqrt().clamp(0.0, 0.999)) as u8;
+                            let b = (256.0 * c.2.sqrt().clamp(0.0, 0.999)) as u8;
+
+                            img.put_pixel(i as u32, (image_height-j-1) as u32, Rgba([r, g, b, 255]));
+                        }
+                    }
+                    img.save("tmp.png").expect("temp save fail");
+                }
+                if tmp_r.is_err() {
+                    break;
+                }
+                let new_screen = tmp_r.unwrap();
+                for j in 0..image_height {
+                    for i in 0..image_width {
+                        let pos = j*image_width+i;
+                        screen_accumulator[pos] = screen_accumulator[pos] + new_screen[pos];
+                    }
+                }
             }
-        }
-        s1
-    }) {
-        for j in 0..image_height {
-            for i in 0..s.image_width {
-                let c = (1.0/s.samples_per_pixel as f64) * screen[j*s.image_width+i];
+            img
+        });
 
-                // gamma correction with gamma = 2
-                let r = (256.0 * c.0.sqrt().clamp(0.0, 0.999)) as u8;
-                let g = (256.0 * c.1.sqrt().clamp(0.0, 0.999)) as u8;
-                let b = (256.0 * c.2.sqrt().clamp(0.0, 0.999)) as u8;
+        let _: Vec<_> = (0..s.samples_per_pixel).collect::<Vec<usize>>().par_iter()
+            .map(|_| {
+                let s = render(world, lights, (s.image_width, image_height), s.max_depth, &s.background, &cam);
+                atx.lock().unwrap().send(s).expect("send failed");
+                bar.inc(1);
+                ()
+            }).collect();
+        drop(atx);
 
-                img.put_pixel(i as u32, (image_height-j-1) as u32, Rgba([r, g, b, 255]));
-            }
-        }
-    }
-
+        handler.join().unwrap()
+    };
     img
 }
 
@@ -281,6 +309,7 @@ fn main() {
         max_depth: 50,
         samples_per_pixel: 36,
         background: Vec3(0.7, 0.8, 1.0),
+        save_temps: 30,
     };
     let mut v = View {
         look_from: Vec3(13.0, 2.0, 3.0),

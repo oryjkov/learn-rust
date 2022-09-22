@@ -8,21 +8,22 @@ pub trait PDF {
 	// Evaluates the PDF for the given direction.
 	fn eval(&self, v: &Vec3) -> f64;
 	// Generates a random Vector according to the pdf.
-	fn gen(&self) -> (Vec3, Option<f64>);
+	fn gen(&self) -> Vec3;
 }
 
 pub struct MixturePDF<'a> {
 	pub pdf1: &'a dyn PDF,
 	pub pdf2: &'a dyn PDF,
+	pub ratio: f64,
 }
 
 impl <'a> PDF for MixturePDF<'a> {
 	fn eval(&self, v: &Vec3) -> f64 {
-		0.5*self.pdf1.eval(&v) + 0.5*self.pdf2.eval(&v)
+		self.ratio*self.pdf1.eval(&v) + (1.0-self.ratio)*self.pdf2.eval(&v)
 	}
 
-	fn gen(&self) -> (Vec3, Option<f64>) {
-		if random::<f64>() < 0.5 {
+	fn gen(&self) -> Vec3 {
+		if random::<f64>() < self.ratio {
 			self.pdf1.gen()
 		} else {
 			self.pdf2.gen()
@@ -40,9 +41,9 @@ impl <'a> PDF for HittablePDF<'a> {
 	fn eval(&self, dir: &Vec3) -> f64 {
 		self.hittable.pdf_eval(self.origin, dir)
 	}
-	fn gen(&self) -> (Vec3, Option<f64>) {
+	fn gen(&self) -> Vec3 {
 		let v = self.hittable.gen_random_point(self.origin);
-		(unit_vector(v), None)
+		unit_vector(v)
 	}
 }
 
@@ -76,8 +77,8 @@ impl <'a> PDF for CosinePDF<'a> {
 			0.0
 		}
 	}
-	fn gen(&self) -> (Vec3, Option<f64>) {
+	fn gen(&self) -> Vec3 {
 		let rcv = random_cosine_vector(self.normal);
-		(rcv.0, Some(rcv.1))
+		rcv.0
 	}
 }

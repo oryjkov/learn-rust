@@ -26,15 +26,11 @@ impl Material for Lambertian {
 	fn scatter(&self, _r_in: &Ray, hr: &HitRecord, lights: &HittableList)
 	    -> Option<(Vec3, Color)> {
 		let cos_pdf = CosinePDF{normal: &hr.normal};
-		let hit_pdf = HittablePDF{hittable: lights.objects[0].as_ref(), origin: &hr.p};
-		let mix_pdf = MixturePDF{pdf1: &cos_pdf, pdf2: &hit_pdf};
+		let hit_pdf = HittablePDF{hittable: lights, origin: &hr.p};
+		let mix_pdf = MixturePDF{ratio: 0.0, pdf1: &cos_pdf, pdf2: &hit_pdf};
 
-		let (scattered_dir, opt_val) = mix_pdf.gen();
-		let pdf_val = if opt_val.is_some() {
-			opt_val.unwrap()
-		} else {
-			mix_pdf.eval(&scattered_dir)
-		};
+		let scattered_dir  = mix_pdf.gen();
+		let pdf_val = mix_pdf.eval(&scattered_dir);
 
 		let color_contribution = self.albedo.value(hr.coord, &hr.p) *
 			scattering_pdf(&hr, &scattered_dir) *

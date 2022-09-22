@@ -27,7 +27,7 @@ impl Material for Lambertian {
 	    -> Option<(Vec3, Color)> {
 		let cos_pdf = CosinePDF{normal: &hr.normal};
 		let hit_pdf = HittablePDF{hittable: lights, origin: &hr.p};
-		let mix_pdf = MixturePDF{ratio: 0.0, pdf1: &cos_pdf, pdf2: &hit_pdf};
+		let mix_pdf = MixturePDF{ratio: 0.5, pdf1: &cos_pdf, pdf2: &hit_pdf};
 
 		let scattered_dir  = mix_pdf.gen();
 		let pdf_val = mix_pdf.eval(&scattered_dir);

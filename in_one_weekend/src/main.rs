@@ -50,8 +50,8 @@ fn cornell_box() -> HittableList {
 
     let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
     objects.push(Box::new(XZRect{p1: Vec2(213.0, 227.0), p2: Vec2(343.0, 332.0), k: 554.0, material: light}));
-    let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
-    objects.push(Box::new(XZRect{p1: Vec2(113.0, 127.0), p2: Vec2(243.0, 192.0), k: 554.0, material: light}));
+    //let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
+    //objects.push(Box::new(XZRect{p1: Vec2(113.0, 127.0), p2: Vec2(243.0, 192.0), k: 277.0, material: light}));
 
     let white = Box::new(Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.73, 0.73, 0.73)})});
     objects.push(Box::new(XZRect{p1: Vec2(0.0, 0.0), p2: Vec2(555.0, 555.0), k: 0.0, material: white}));
@@ -62,8 +62,8 @@ fn cornell_box() -> HittableList {
     let white = Box::new(Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.73, 0.73, 0.73)})});
     objects.push(Box::new(XYRect{p1: Vec2(0.0, 0.0), p2: Vec2(555.0, 555.0), k: 555.0, material: white}));
 
-    //objects.push(Sphere::box_new(Vec3(200.0, 350.0, 200.0), 100.0, Metal{albedo: Vec3(0.7, 0.6, 0.5), fuzz: 0.0}));
-    //objects.push(Sphere::box_new(Vec3(400.0, 350.0, 200.0), 80.0, Dielectric{ir: 1.5}));
+    objects.push(Sphere::box_new(Vec3(200.0, 350.0, 200.0), 100.0, Metal{albedo: Vec3(1.0, 1.0, 1.0), fuzz: 0.0}));
+    objects.push(Sphere::box_new(Vec3(400.0, 350.0, 200.0), 80.0, Dielectric{ir: 1.5}));
 
     let bvh = BVHNode::new(objects);
     let mut world = HittableList{objects: vec![]};
@@ -377,8 +377,8 @@ fn main() {
     let mut lights = HittableList{objects: vec![]};
     let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
     lights.objects.push(Box::new(XZRect{p1: Vec2(213.0, 227.0), p2: Vec2(343.0, 332.0), k: 554.0, material: light}));
-    let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
-    lights.objects.push(Box::new(XZRect{p1: Vec2(113.0, 127.0), p2: Vec2(243.0, 192.0), k: 554.0, material: light}));
+    //let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
+    //lights.objects.push(Box::new(XZRect{p1: Vec2(113.0, 127.0), p2: Vec2(243.0, 192.0), k: 277.0, material: light}));
 
     let bar = ProgressBar::new((a.num_frames * s.samples_per_pixel) as u64);
     let fs = (0..a.num_frames).collect::<Vec<usize>>().par_iter().map(|frame_num| {

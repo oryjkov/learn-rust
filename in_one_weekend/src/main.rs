@@ -39,6 +39,18 @@ use crate::rectangle::*;
 use crate::lambertian::*;
 use crate::dielectric::*;
 
+fn test_sphere() -> HittableList {
+    let mut objects: Vec<Box<dyn Hittable>> = vec![];
+
+    let gray = Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.18, 0.18, 0.18)})};
+    objects.push(Sphere::box_new(Vec3(200.0, 200.0, 200.0), 100.0, gray));
+
+    let bvh = BVHNode::new(objects);
+    let mut world = HittableList{objects: vec![]};
+    world.objects.push(Box::new(bvh));
+    world
+}
+
 fn cornell_box() -> HittableList {
     let mut objects: Vec<Box<dyn Hittable>> = vec![];
 
@@ -198,7 +210,7 @@ fn random_scene() -> HittableList {
 struct IColor(u8, u8, u8);
 type Screen = Vec<Color>;
 
-fn render(world: &Box<dyn Hittable>, lights: &HittableList, (image_width, image_height): (usize, usize), max_depth: i32, background: &Color, cam: &Camera) -> Screen {
+fn render(world: &dyn Hittable, lights: &dyn Hittable, (image_width, image_height): (usize, usize), max_depth: i32, background: &Color, cam: &Camera) -> Screen {
     let mut screen = vec![Vec3(0.0,0.0,0.0); image_height*image_width];
 
     for j in (0..image_height).rev() {
@@ -207,7 +219,7 @@ fn render(world: &Box<dyn Hittable>, lights: &HittableList, (image_width, image_
             let u = (i as f64 + random::<f64>()) / (image_width as f64 - 1.0);
             let v = (j as f64 + random::<f64>()) / (image_height as f64 - 1.0);
             let r = cam.get_ray(u, v);
-            pixel_color = pixel_color + ray_color(&r, background, &**world, lights, max_depth);
+            pixel_color = pixel_color + ray_color(&r, background, world, lights, max_depth);
             screen[j*image_width+i] = pixel_color;
         }
     } 
@@ -234,7 +246,7 @@ struct Scene {
     save_temps: usize,
 }
 
-fn build_frame(bar: &ProgressBar, world: &Box<dyn Hittable>, lights: &HittableList, v: &View, s: &Scene) -> RgbaImage {
+fn build_frame(bar: &ProgressBar, world: &dyn Hittable, lights: &dyn Hittable, v: &View, s: &Scene) -> RgbaImage {
     let image_height: usize = ((s.image_width as f64) / s.aspect_ratio) as usize;
     let image_width = s.image_width;
     let save_temps = s.save_temps;
@@ -325,7 +337,7 @@ fn main() {
     };
 
     // World
-    let wp: Box<dyn Hittable> = Box::new(match 6 {
+    let wp: Box<dyn Hittable> = Box::new(match 8 {
         1 => {
             v.aperture = 0.1;
             v.vfov_deg = 20.0;
@@ -360,7 +372,7 @@ fn main() {
 
             cornell_box()
         }
-        _ => {
+        7 => {
             s.aspect_ratio = 1.0;
             s.image_width = 300;
             s.samples_per_pixel = 800;
@@ -372,6 +384,17 @@ fn main() {
             a.f = |v, t| { let mut z = v.clone(); z.look_from = Vec3(2.0*278.0*t, 278.0, -800.0); z};
             cornell_box()
         }
+        _ => {
+            s.aspect_ratio = 1.0;
+            s.image_width = 600;
+            s.samples_per_pixel = 1;
+            v.look_from = Vec3(278.0, 278.0, -800.0);
+            v.look_at = Vec3(278.0, 278.0, 0.0);
+            s.background = Vec3(1.0, 1.0, 1.0);
+
+            test_sphere()
+        }
+
     });
 
     let mut lights = HittableList{objects: vec![]};
@@ -382,7 +405,7 @@ fn main() {
 
     let bar = ProgressBar::new((a.num_frames * s.samples_per_pixel) as u64);
     let fs = (0..a.num_frames).collect::<Vec<usize>>().par_iter().map(|frame_num| {
-        build_frame(&bar, &wp, &lights, &(a.f)(&v, *frame_num as f64 / a.num_frames as f64), &s)
+        build_frame(&bar, &*wp, &lights, &(a.f)(&v, *frame_num as f64 / a.num_frames as f64), &s)
     }).collect::<Vec<RgbaImage>>();
 
     let file_out = File::create("out.gif").unwrap();

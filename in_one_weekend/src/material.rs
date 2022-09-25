@@ -6,7 +6,7 @@ pub trait Material: Sync {
 	// Scatters the light. Returns the scattering direction and the color
 	// contribution of this scattering.
 	// Returns None when the ray was absorbed.
-	fn scatter(&self, r_in: &Ray, hr: &HitRecord, lights: &HittableList)
+	fn scatter(&self, r_in: &Ray, hr: &HitRecord, lights: &dyn Hittable)
 	    -> Option<(Vec3, Color)> {
 		let _ = r_in;
 		let _ = hr;

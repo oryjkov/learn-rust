@@ -23,7 +23,7 @@ fn scattering_pdf(hr: &HitRecord, scattered_dir: &Vec3) -> f64 {
 
 
 impl Material for Lambertian {
-	fn scatter(&self, _r_in: &Ray, hr: &HitRecord, lights: &HittableList)
+	fn scatter(&self, _r_in: &Ray, hr: &HitRecord, lights: &dyn Hittable)
 	    -> Option<(Vec3, Color)> {
 		let cos_pdf = CosinePDF{normal: &hr.normal};
 		let hit_pdf = HittablePDF{hittable: lights, origin: &hr.p};

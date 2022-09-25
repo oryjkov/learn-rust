@@ -13,7 +13,7 @@ impl Ray {
     }
 }
 
-pub fn ray_color(r: &Ray, background: &Color, world: &dyn Hittable, lights: &HittableList,
+pub fn ray_color(r: &Ray, background: &Color, world: &dyn Hittable, lights: &dyn Hittable,
     depth: i32) -> Color {
     if depth <= 0 {
         return Vec3(0.0, 0.0, 0.0);

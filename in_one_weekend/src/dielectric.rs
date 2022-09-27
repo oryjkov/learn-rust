@@ -26,7 +26,7 @@ fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
 }
 
 impl Material for Dielectric {
-	fn scatter(&self, r_in: &Ray, hr: &HitRecord, _lights: &dyn Hittable)
+	fn scatter(&self, r_in: &Ray, hr: &HitRecord, _lights: Option<&dyn Hittable>)
 	    -> Option<(Vec3, Color)> {
 		let attenuation = Vec3(1.0, 1.0, 1.0);
 		let refraction_ratio = if hr.front_face {1.0/self.ir} else {self.ir};

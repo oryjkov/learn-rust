@@ -11,40 +11,18 @@ pub trait PDF {
 	fn gen(&self) -> Vec3;
 }
 
-pub struct MixturePDF<'a> {
-	pub pdf1: &'a dyn PDF,
-	pub pdf2: &'a dyn PDF,
-	pub ratio: f64,
-}
-
-impl <'a> PDF for MixturePDF<'a> {
-	fn eval(&self, v: &Vec3) -> f64 {
-		self.ratio*self.pdf1.eval(&v) + (1.0-self.ratio)*self.pdf2.eval(&v)
-	}
-
-	fn gen(&self) -> Vec3 {
-		if random::<f64>() < self.ratio {
-			self.pdf1.gen()
-		} else {
-			self.pdf2.gen()
-		}
-	}
-}
-
-pub struct HittablePDF<'a> {
-	pub hittable: &'a dyn Hittable,
-	// Origin relative to which the random vector is generated. 
-	pub origin: &'a Vec3,
-}
-
-impl <'a> PDF for HittablePDF<'a> {
-	fn eval(&self, dir: &Vec3) -> f64 {
-		self.hittable.pdf_eval(self.origin, dir)
-	}
-	fn gen(&self) -> Vec3 {
-		let v = self.hittable.gen_random_point(self.origin);
-		unit_vector(v)
-	}
+pub fn gen_eval(origin: &Vec3, cos_pdf: &CosinePDF, w0: f64, pdfs: &Vec<&dyn Hittable>) -> (Vec3, f64) {
+	let mut w = 0.0;
+	let r = random::<f64>();
+	let v = if r <= w0 {
+		cos_pdf.gen()
+	} else {
+		w = (1.0-w0)/(pdfs.len() as f64);
+		let idx = ((r - w0) / w).trunc() as usize;
+		unit_vector(pdfs[idx].gen_random_point(origin))
+	};
+	let gen = w0*cos_pdf.eval(&v) + pdfs.iter().map(|pdf| {pdf.pdf_eval(origin, &v) * w}).sum::<f64>();
+	(v, gen)
 }
 
 pub struct CosinePDF<'a> {

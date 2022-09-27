@@ -23,14 +23,14 @@ fn scattering_pdf(hr: &HitRecord, scattered_dir: &Vec3) -> f64 {
 
 
 impl Material for Lambertian {
-	fn scatter(&self, _r_in: &Ray, hr: &HitRecord, lights: &dyn Hittable)
+	fn scatter(&self, _r_in: &Ray, hr: &HitRecord, lights: Option<&dyn Hittable>)
 	    -> Option<(Vec3, Color)> {
 		let cos_pdf = CosinePDF{normal: &hr.normal};
-		let hit_pdf = HittablePDF{hittable: lights, origin: &hr.p};
-		let mix_pdf = MixturePDF{ratio: 0.5, pdf1: &cos_pdf, pdf2: &hit_pdf};
-
-		let scattered_dir  = mix_pdf.gen();
-		let pdf_val = mix_pdf.eval(&scattered_dir);
+		let (scattered_dir, pdf_val) = if let Some(l) = lights {
+		    gen_eval(&hr.p, &cos_pdf, 0.5, &vec!(l))
+		} else {
+		    gen_eval(&hr.p, &cos_pdf, 1.0, &vec!())
+		};
 
 		let color_contribution = self.albedo.value(hr.coord, &hr.p) *
 			scattering_pdf(&hr, &scattered_dir) *

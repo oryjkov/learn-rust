@@ -33,6 +33,7 @@ pub trait Hittable: Sync {
         let _ = dir;
         0.0
     }
+    fn is_light(&self) -> bool { false }
 }
 
 pub struct HittableList {

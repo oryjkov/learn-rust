@@ -21,7 +21,7 @@ pub struct Metal {
 }
 
 impl Material for Metal {
-	fn scatter(&self, r_in: &Ray, hr: &HitRecord, _lights: Option<&dyn Hittable>)
+	fn scatter(&self, r_in: &Ray, hr: &HitRecord, _lights: &[&dyn Hittable])
 	    -> Option<(Vec3, Color)> {
 		let reflected = reflect(unit_vector(r_in.dir), hr.normal);
 		let scattered_dir = reflected + self.fuzz*random_in_unit_sphere();

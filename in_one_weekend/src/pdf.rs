@@ -11,7 +11,7 @@ pub trait PDF {
 	fn gen(&self) -> Vec3;
 }
 
-pub fn gen_eval(origin: &Vec3, cos_pdf: &CosinePDF, w0: f64, pdfs: &Vec<&dyn Hittable>) -> (Vec3, f64) {
+pub fn gen_eval(origin: &Vec3, cos_pdf: &CosinePDF, w0: f64, pdfs: &[&dyn Hittable]) -> (Vec3, f64) {
 	let mut w = 0.0;
 	let r = random::<f64>();
 	let v = if r <= w0 {

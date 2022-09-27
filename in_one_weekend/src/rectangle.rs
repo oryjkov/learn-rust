@@ -72,7 +72,13 @@ pub struct XZRect {
 }
 
 impl Hittable for XZRect {
-	fn is_light(&self) -> bool { self.material.is_light() }
+	fn pick_lights(&self) -> Vec<&dyn Hittable> {
+		if self.material.is_light() {
+			vec![self]
+		} else {
+			vec![]
+		}
+	}
 	fn bounding_box(&self) -> Option<AABB> {
 		Some(AABB::new(Vec3(self.p1.0, self.k-EPS, self.p1.1), Vec3(self.p2.0, self.k+EPS, self.p2.1)))
 	}

@@ -41,6 +41,15 @@ impl Hittable for BVHNode {
 	fn gen_random_point(&self, _origin: &Vec3) -> Vec3 {
 		panic!("should not call random point on BVHNode");
 	}
+
+    fn pick_lights(&self) -> Vec<&dyn Hittable> {
+		let mut rv: Vec<&dyn Hittable> = vec![];
+		rv.append(&mut self.child0.pick_lights());
+		if let Some(c1) = &self.child1 {
+			rv.append(&mut c1.pick_lights());
+		}
+		rv
+	}
 }
 
 impl BVHNode {

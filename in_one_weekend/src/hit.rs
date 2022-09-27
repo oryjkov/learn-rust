@@ -33,7 +33,8 @@ pub trait Hittable: Sync {
         let _ = dir;
         0.0
     }
-    fn is_light(&self) -> bool { false }
+    // Used to collect all lights that are behind this Hittable.
+    fn pick_lights(&self) -> Vec<&dyn Hittable> { vec![] }
 }
 
 pub struct HittableList {

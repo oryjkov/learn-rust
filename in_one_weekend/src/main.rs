@@ -39,11 +39,30 @@ use crate::rectangle::*;
 use crate::lambertian::*;
 use crate::dielectric::*;
 
+fn make_world<'a>(objects: Vec<Box<dyn Hittable>>) -> (HittableList, Vec<&'a dyn Hittable>) {
+    //let l = pick_lights(&objects);
+    let bvh = BVHNode::new(objects);
+    let mut world = HittableList{objects: vec![]};
+    world.objects.push(Box::new(bvh));
+    (world, vec![])
+}
+
+fn pick_lights<'a>(obj: &'a [Box<dyn Hittable>]) -> Vec<&'a dyn Hittable> {
+    let mut rv: Vec<&dyn Hittable> = vec![];
+    for x in obj {
+        if x.is_light() {
+            rv.push(&**x);
+        }
+    }
+    rv
+}
+
 fn test_sphere() -> HittableList {
     let mut objects: Vec<Box<dyn Hittable>> = vec![];
 
     let gray = Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.18, 0.18, 0.18)})};
     objects.push(Sphere::box_new(Vec3(200.0, 200.0, 200.0), 100.0, gray));
+    let l = pick_lights(&objects);
 
     let bvh = BVHNode::new(objects);
     let mut world = HittableList{objects: vec![]};
@@ -51,6 +70,7 @@ fn test_sphere() -> HittableList {
     world
 }
 
+/*
 fn cornell_box() -> HittableList {
     let mut objects: Vec<Box<dyn Hittable>> = vec![];
 
@@ -62,8 +82,8 @@ fn cornell_box() -> HittableList {
 
     let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
     objects.push(Box::new(XZRect{p1: Vec2(213.0, 227.0), p2: Vec2(343.0, 332.0), k: 554.0, material: light}));
-    //let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
-    //objects.push(Box::new(XZRect{p1: Vec2(113.0, 127.0), p2: Vec2(243.0, 192.0), k: 277.0, material: light}));
+    let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
+    objects.push(Box::new(XZRect{p1: Vec2(113.0, 127.0), p2: Vec2(243.0, 192.0), k: 554.0, material: light}));
 
     let white = Box::new(Lambertian{albedo: Box::new(SolidColor{color: Vec3(0.73, 0.73, 0.73)})});
     objects.push(Box::new(XZRect{p1: Vec2(0.0, 0.0), p2: Vec2(555.0, 555.0), k: 0.0, material: white}));
@@ -205,12 +225,13 @@ fn random_scene() -> HittableList {
     world.objects.push(Box::new(bvh));
     world
 }
+*/
 
 #[derive(Copy, Clone)]
 struct IColor(u8, u8, u8);
 type Screen = Vec<Color>;
 
-fn render(world: &dyn Hittable, lights: &dyn Hittable, (image_width, image_height): (usize, usize), max_depth: i32, background: &Color, cam: &Camera) -> Screen {
+fn render(world: &dyn Hittable, lights: Option<&dyn Hittable>, (image_width, image_height): (usize, usize), max_depth: i32, background: &Color, cam: &Camera) -> Screen {
     let mut screen = vec![Vec3(0.0,0.0,0.0); image_height*image_width];
 
     for j in (0..image_height).rev() {
@@ -246,7 +267,7 @@ struct Scene {
     save_temps: usize,
 }
 
-fn build_frame(bar: &ProgressBar, world: &dyn Hittable, lights: &dyn Hittable, v: &View, s: &Scene) -> RgbaImage {
+fn build_frame(bar: &ProgressBar, world: &dyn Hittable, lights: Option<&dyn Hittable>, v: &View, s: &Scene) -> RgbaImage {
     let image_height: usize = ((s.image_width as f64) / s.aspect_ratio) as usize;
     let image_width = s.image_width;
     let save_temps = s.save_temps;
@@ -336,8 +357,12 @@ fn main() {
         f: |v, _t| { v.clone() },
     };
 
+    let mut lights: Option<&dyn Hittable> = None;
+    let mut l = HittableList{objects: vec![]};
+
     // World
-    let wp: Box<dyn Hittable> = Box::new(match 8 {
+    let wp: Box<dyn Hittable> = Box::new(match 6 {
+        /*
         1 => {
             v.aperture = 0.1;
             v.vfov_deg = 20.0;
@@ -370,6 +395,12 @@ fn main() {
             v.look_at = Vec3(278.0, 278.0, 0.0);
             s.background = Vec3(0.0, 0.0, 0.0);
 
+            let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
+            l.objects.push(Box::new(XZRect{p1: Vec2(213.0, 227.0), p2: Vec2(343.0, 332.0), k: 554.0, material: light}));
+            let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
+            l.objects.push(Box::new(XZRect{p1: Vec2(113.0, 127.0), p2: Vec2(243.0, 192.0), k: 554.0, material: light}));
+            lights = Some(&l);
+
             cornell_box()
         }
         7 => {
@@ -384,6 +415,7 @@ fn main() {
             a.f = |v, t| { let mut z = v.clone(); z.look_from = Vec3(2.0*278.0*t, 278.0, -800.0); z};
             cornell_box()
         }
+        */
         _ => {
             s.aspect_ratio = 1.0;
             s.image_width = 600;
@@ -394,18 +426,11 @@ fn main() {
 
             test_sphere()
         }
-
     });
-
-    let mut lights = HittableList{objects: vec![]};
-    let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
-    lights.objects.push(Box::new(XZRect{p1: Vec2(213.0, 227.0), p2: Vec2(343.0, 332.0), k: 554.0, material: light}));
-    //let light = Box::new(DiffuseLight{emit: Box::new(SolidColor{color: 15.0*Vec3(1.0, 1.0, 1.0)})});
-    //lights.objects.push(Box::new(XZRect{p1: Vec2(113.0, 127.0), p2: Vec2(243.0, 192.0), k: 277.0, material: light}));
 
     let bar = ProgressBar::new((a.num_frames * s.samples_per_pixel) as u64);
     let fs = (0..a.num_frames).collect::<Vec<usize>>().par_iter().map(|frame_num| {
-        build_frame(&bar, &*wp, &lights, &(a.f)(&v, *frame_num as f64 / a.num_frames as f64), &s)
+        build_frame(&bar, &*wp, lights, &(a.f)(&v, *frame_num as f64 / a.num_frames as f64), &s)
     }).collect::<Vec<RgbaImage>>();
 
     let file_out = File::create("out.gif").unwrap();
